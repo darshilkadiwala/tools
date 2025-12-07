@@ -1,51 +1,30 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import type { Loan, LoanType } from "@/types";
-import {
-  isoToDate,
-  dateToISO,
-  isoDateStringToDate,
-  dateToISODateString,
-} from "@/lib/utils";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { dateToISO, dateToISODateString, isoDateStringToDate, isoToDate } from '@/lib/utils';
+
+import type { Loan, LoanType } from '@/types';
 
 const loanFormSchema = z.object({
-  name: z.string().min(1, "Loan name is required"),
-  type: z.enum(["home", "car", "education", "personal", "other"]),
-  principal: z.number().min(1, "Principal must be greater than 0"),
-  interestRate: z
-    .number()
-    .min(0, "Interest rate must be non-negative")
-    .max(100, "Interest rate cannot exceed 100%"),
-  tenureMonths: z.number().min(1, "Tenure must be at least 1 month"),
-  startDate: z.string().min(1, "Loan start date is required"),
-  emiStartDate: z.string().min(1, "EMI start date is required"),
+  name: z.string().min(1, 'Loan name is required'),
+  type: z.enum(['home', 'car', 'education', 'personal', 'other']),
+  principal: z.number().min(1, 'Principal must be greater than 0'),
+  interestRate: z.number().min(0, 'Interest rate must be non-negative').max(100, 'Interest rate cannot exceed 100%'),
+  tenureMonths: z.number().min(1, 'Tenure must be at least 1 month'),
+  startDate: z.string().min(1, 'Loan start date is required'),
+  emiStartDate: z.string().min(1, 'EMI start date is required'),
 });
 
 type LoanFormValues = z.infer<typeof loanFormSchema>;
 
 interface LoanFormProps {
   loan?: Loan;
-  onSubmit: (
-    data: Omit<Loan, "id" | "createdAt" | "updatedAt" | "emiAmount">
-  ) => Promise<void>;
+  onSubmit: (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => Promise<void>;
   onCancel?: () => void;
 }
 
@@ -60,13 +39,11 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
           interestRate: loan.interestRate,
           tenureMonths: loan.tenureMonths,
           startDate: dateToISODateString(isoToDate(loan.startDate)),
-          emiStartDate: dateToISODateString(
-            isoToDate(loan.emiStartDate || loan.startDate)
-          ),
+          emiStartDate: dateToISODateString(isoToDate(loan.emiStartDate || loan.startDate)),
         }
       : {
-          name: "",
-          type: "home",
+          name: '',
+          type: 'home',
           principal: 0,
           interestRate: 0,
           tenureMonths: 0,
@@ -89,30 +66,20 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-6 relative">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className='relative space-y-6'>
         {/* Basic Information Section */}
-        <div className="space-y-4">
+        <div className='space-y-4'>
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-foreground">
-              Basic Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className='text-foreground mb-3 text-lg font-semibold'>Basic Information</h3>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <FormField
                 control={form.control}
-                name="name"
+                name='name'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Loan Name
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Loan Name</FormLabel>
                     <FormControl>
-                      <Input
-                        className="h-11 text-base"
-                        placeholder="e.g., Home Loan - HDFC"
-                        {...field}
-                      />
+                      <Input className='h-11 text-base' placeholder='e.g., Home Loan - HDFC' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -121,26 +88,22 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
               <FormField
                 control={form.control}
-                name="type"
+                name='type'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Loan Type
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Loan Type</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-11! text-base w-full py-1">
-                          <SelectValue placeholder="Select loan type" />
+                        <SelectTrigger className='h-11! w-full py-1 text-base'>
+                          <SelectValue placeholder='Select loan type' />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="home">Home Loan</SelectItem>
-                        <SelectItem value="car">Car Loan</SelectItem>
-                        <SelectItem value="education">
-                          Education Loan
-                        </SelectItem>
-                        <SelectItem value="personal">Personal Loan</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value='home'>Home Loan</SelectItem>
+                        <SelectItem value='car'>Car Loan</SelectItem>
+                        <SelectItem value='education'>Education Loan</SelectItem>
+                        <SelectItem value='personal'>Personal Loan</SelectItem>
+                        <SelectItem value='other'>Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -151,30 +114,24 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
           </div>
 
           {/* Financial Details Section */}
-          <div className="pt-4 border-t">
-            <h3 className="text-lg font-semibold mb-3 text-foreground">
-              Financial Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className='border-t pt-4'>
+            <h3 className='text-foreground mb-3 text-lg font-semibold'>Financial Details</h3>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <FormField
                 control={form.control}
-                name="principal"
+                name='principal'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Principal Amount (₹)
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Principal Amount (₹)</FormLabel>
                     <FormControl>
                       <Input
-                        className="h-11 text-base"
-                        type="number"
-                        step="0.01"
-                        placeholder="1000000"
+                        className='h-11 text-base'
+                        type='number'
+                        step='0.01'
+                        placeholder='1000000'
                         {...field}
-                        value={field.value || ""}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -184,23 +141,19 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
               <FormField
                 control={form.control}
-                name="interestRate"
+                name='interestRate'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Annual Interest Rate (%)
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Annual Interest Rate (%)</FormLabel>
                     <FormControl>
                       <Input
-                        className="h-11 text-base"
-                        type="number"
-                        step="0.01"
-                        placeholder="8.5"
+                        className='h-11 text-base'
+                        type='number'
+                        step='0.01'
+                        placeholder='8.5'
                         {...field}
-                        value={field.value || ""}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -210,22 +163,18 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
               <FormField
                 control={form.control}
-                name="tenureMonths"
+                name='tenureMonths'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Tenure (Months)
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Tenure (Months)</FormLabel>
                     <FormControl>
                       <Input
-                        className="h-11 text-base"
-                        type="number"
-                        placeholder="240"
+                        className='h-11 text-base'
+                        type='number'
+                        placeholder='240'
                         {...field}
-                        value={field.value || ""}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value) || 0)
-                        }
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -236,25 +185,17 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
           </div>
 
           {/* Date Information Section */}
-          <div className="pt-4 border-t">
-            <h3 className="text-lg font-semibold mb-3 text-foreground">
-              Date Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className='border-t pt-4'>
+            <h3 className='text-foreground mb-3 text-lg font-semibold'>Date Information</h3>
+            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
               <FormField
                 control={form.control}
-                name="startDate"
+                name='startDate'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      Loan Start Date
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>Loan Start Date</FormLabel>
                     <FormControl>
-                      <Input
-                        className="h-11 text-base"
-                        type="date"
-                        {...field}
-                      />
+                      <Input className='h-11 text-base' type='date' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -263,18 +204,12 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
               <FormField
                 control={form.control}
-                name="emiStartDate"
+                name='emiStartDate'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">
-                      First EMI Due Date
-                    </FormLabel>
+                    <FormLabel className='text-base font-medium'>First EMI Due Date</FormLabel>
                     <FormControl>
-                      <Input
-                        className="h-11 text-base"
-                        type="date"
-                        {...field}
-                      />
+                      <Input className='h-11 text-base' type='date' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -285,25 +220,14 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
         </div>
 
         {/* Form actions buttons */}
-        <div className="flex sticky bottom-0 bg-background items-center justify-end gap-3 pt-4 border-t">
+        <div className='bg-background sticky bottom-0 flex items-center justify-end gap-3 border-t pt-4'>
           {onCancel && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              className="h-11 px-6">
+            <Button type='button' variant='outline' onClick={onCancel} className='h-11 px-6'>
               Cancel
             </Button>
           )}
-          <Button
-            type="submit"
-            disabled={form.formState.isSubmitting}
-            className="h-11 px-6">
-            {form.formState.isSubmitting
-              ? "Saving..."
-              : loan
-              ? "Update Loan"
-              : "Create Loan"}
+          <Button type='submit' disabled={form.formState.isSubmitting} className='h-11 px-6'>
+            {form.formState.isSubmitting ? 'Saving...' : loan ? 'Update Loan' : 'Create Loan'}
           </Button>
         </div>
       </form>

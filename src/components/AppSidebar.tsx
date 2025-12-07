@@ -1,3 +1,6 @@
+import { CalculatorIcon, Car, FileText, GraduationCap, Home, Plus, Wallet } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import {
   Sidebar,
   SidebarContent,
@@ -9,20 +12,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { useLoanContext } from "@/contexts/LoanContext";
-import { cn } from "@/lib/utils";
-import type { Loan, LoanType } from "@/types";
-import {
-  CalculatorIcon,
-  Car,
-  FileText,
-  GraduationCap,
-  Home,
-  Plus,
-  Wallet,
-} from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+} from '@/components/ui/sidebar';
+import { useLoanContext } from '@/contexts/LoanContext';
+import { cn } from '@/lib/utils';
+
+import type { Loan, LoanType } from '@/types';
 
 const loanTypeIcons = {
   home: Home,
@@ -33,20 +27,14 @@ const loanTypeIcons = {
 };
 
 const loanTypeLabels: Record<LoanType, string> = {
-  home: "Home Loans",
-  car: "Car Loans",
-  education: "Education Loans",
-  personal: "Personal Loans",
-  other: "Other Loans",
+  home: 'Home Loans',
+  car: 'Car Loans',
+  education: 'Education Loans',
+  personal: 'Personal Loans',
+  other: 'Other Loans',
 };
 
-const loanTypeOrder: LoanType[] = [
-  "home",
-  "car",
-  "education",
-  "personal",
-  "other",
-];
+const loanTypeOrder: LoanType[] = ['home', 'car', 'education', 'personal', 'other'];
 
 function groupLoansByType(loans: Loan[]): Record<LoanType, Loan[]> {
   const grouped: Record<LoanType, Loan[]> = {
@@ -81,16 +69,16 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar variant='inset'>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" onClick={() => handleNavigation("/")}>
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <CalculatorIcon className="size-5" />
+            <SidebarMenuButton size='lg' onClick={() => handleNavigation('/')}>
+              <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg'>
+                <CalculatorIcon className='size-5' />
               </div>
-              <div className="flex flex-1 items-center text-start text-sm leading-tight">
-                <span className="truncate font-medium">Loans Calculator</span>
+              <div className='flex flex-1 items-center text-start text-sm leading-tight'>
+                <span className='truncate font-medium'>Loans Calculator</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -102,10 +90,8 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => handleNavigation("/loans/create")}
-                  className="w-full justify-start">
-                  <Plus className="h-4 w-4" />
+                <SidebarMenuButton onClick={() => handleNavigation('/loans/create')} className='w-full justify-start'>
+                  <Plus className='h-4 w-4' />
                   <span>New Loan</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -130,12 +116,9 @@ export function AppSidebar() {
                       <SidebarMenuItem key={loan.id}>
                         <SidebarMenuButton
                           onClick={() => handleNavigation(`/loans/${loan.id}`)}
-                          className={cn(
-                            "w-full justify-start",
-                            isActive && "bg-accent text-accent-foreground"
-                          )}>
-                          <Icon className="h-4 w-4" />
-                          <span className="truncate">{loan.name}</span>
+                          className={cn('w-full justify-start', isActive && 'bg-accent text-accent-foreground')}>
+                          <Icon className='h-4 w-4' />
+                          <span className='truncate'>{loan.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );

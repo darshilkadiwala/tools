@@ -1,5 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -24,8 +24,8 @@ export function isoToDate(isoString: string): Date {
  */
 export function dateToISODateString(date: Date): string {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -34,7 +34,7 @@ export function dateToISODateString(date: Date): string {
  */
 export function isoDateStringToDate(isoDateString: string): Date {
   // Create date at midnight UTC
-  return new Date(isoDateString + "T00:00:00.000Z");
+  return new Date(isoDateString + 'T00:00:00.000Z');
 }
 
 /**
@@ -42,15 +42,15 @@ export function isoDateStringToDate(isoDateString: string): Date {
  */
 export function generateUUID(): string {
   // Check if crypto.randomUUID is available
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
 
   // Fallback polyfill for environments without crypto.randomUUID
   // This generates a UUID v4 compliant string
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }

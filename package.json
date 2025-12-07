@@ -7,7 +7,9 @@
     "build": "tsc -b && vite build",
     "dev": "vite",
     "format": "prettier --write --list-different .",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0 --cache",
+    "lint:fix": "eslint . --fix --max-warnings=0 --cache",
+    "lint:types": "tsc --noEmit",
     "postinstall": "pnpm format",
     "preview": "vite preview"
   },

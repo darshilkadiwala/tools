@@ -1,30 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { useLoanContext } from "@/contexts/LoanContext";
-import { EMISchedule } from "@/components/emi/EMISchedule";
-import { PrePaymentDialog } from "@/components/payment/PrePaymentDialog";
-import { StepUpDialog } from "@/components/payment/StepUpDialog";
-import { InterestRateModifier } from "@/components/InterestRate/InterestRateModifier";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { useEMISchedule } from "@/hooks/useEMISchedule";
-import {
-  Download,
-  Plus,
-  Wallet,
-  TrendingUp,
-  Calendar,
-  Percent,
-  Edit,
-  PencilIcon,
-  RefreshCwIcon,
-} from "lucide-react";
-import { formatCurrency } from "@/lib/calculations";
+import { useEffect, useRef, useState } from 'react';
+
+import { Calendar, Download, PencilIcon, Percent, RefreshCwIcon, TrendingUp, Wallet } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+
+import { EMISchedule } from '@/components/emi/EMISchedule';
+import { InterestRateModifier } from '@/components/InterestRate/InterestRateModifier';
+import { PrePaymentDialog } from '@/components/payment/PrePaymentDialog';
+import { StepUpDialog } from '@/components/payment/StepUpDialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLoanContext } from '@/contexts/LoanContext';
+import { useEMISchedule } from '@/hooks/useEMISchedule';
+import { formatCurrency } from '@/lib/calculations';
 
 export function LoanDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,144 +29,118 @@ export function LoanDetailsPage() {
   const loan = loans.loans.find((l) => l.id === id);
   const { schedule } = useEMISchedule(id || null);
 
-  const maxEMINumber =
-    schedule.length > 0 ? schedule[schedule.length - 1].emiNumber : 0;
+  const maxEMINumber = schedule.length > 0 ? schedule[schedule.length - 1].emiNumber : 0;
 
   // Calculate loan statistics
   const totalOutstanding =
-    schedule.length > 0
-      ? schedule[schedule.length - 1].outstandingPrincipal
-      : loan?.principal || 0;
+    schedule.length > 0 ? schedule[schedule.length - 1].outstandingPrincipal : loan?.principal || 0;
   const totalInterest = schedule.reduce((sum, emi) => sum + emi.interest, 0);
 
   useEffect(() => {
     if (!loans.loading && !loan) {
-      navigate("/");
+      navigate('/');
     }
   }, [loans.loading, loan, navigate]);
 
   if (loans.loading || !loan || !id) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <div className='flex items-center justify-center py-16'>
+        <div className='text-center'>
+          <div className='border-primary mb-4 inline-block h-8 w-8 animate-spin rounded-full border-b-2'></div>
+          <p className='text-muted-foreground'>Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className='space-y-8'>
       {/* Dashboard Header */}
-      <div className="flex items-start justify-between">
+      <div className='flex items-start justify-between'>
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-2">
-            {loan.name}
-          </h1>
-          <p className="text-muted-foreground text-sm uppercase">
-            {loan.type} Loan
-          </p>
+          <h1 className='mb-2 text-3xl font-semibold tracking-tight'>{loan.name}</h1>
+          <p className='text-muted-foreground text-sm uppercase'>{loan.type} Loan</p>
         </div>
-        <div className="hidden md:flex items-center justify-between gap-2">
+        <div className='hidden items-center justify-between gap-2 md:flex'>
           <Button
-            variant="outline"
+            variant='outline'
             onClick={() => regenerateScheduleRef.current?.()}
             disabled={!regenerateScheduleRef.current}>
-            <RefreshCwIcon className="h-4 w-4 mr-2" />
+            <RefreshCwIcon className='mr-2 h-4 w-4' />
             Regenerate
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportCSVRef.current?.()}
-            disabled={!exportCSVRef.current}>
-            <Download className="h-4 w-4 mr-2" />
+          <Button variant='outline' onClick={() => exportCSVRef.current?.()} disabled={!exportCSVRef.current}>
+            <Download className='mr-2 h-4 w-4' />
             Export CSV
           </Button>
           <Button onClick={() => navigate(`/loans/${id}/edit`)}>
-            <PencilIcon className="h-4 w-4 mr-2" />
+            <PencilIcon className='mr-2 h-4 w-4' />
             Edit Loan
           </Button>
         </div>
       </div>
 
       {/* My Balances Section */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                  <Wallet className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+      <div className='space-y-4'>
+        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
+          <Card className='border-2'>
+            <CardHeader className='pb-3'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='rounded-lg bg-orange-100 p-2 dark:bg-orange-900/20'>
+                  <Wallet className='h-5 w-5 text-orange-600 dark:text-orange-400' />
                 </div>
-                <CardDescription className="text-xs">
-                  Principal Amount
-                </CardDescription>
+                <CardDescription className='text-xs'>Principal Amount</CardDescription>
               </div>
-              <CardTitle className="text-2xl font-bold">
-                {formatCurrency(loan.principal)}
-              </CardTitle>
+              <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.principal)}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <Card className='border-2'>
+            <CardHeader className='pb-3'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
+                  <TrendingUp className='h-5 w-5 text-purple-600 dark:text-purple-400' />
                 </div>
-                <CardDescription className="text-xs">
-                  Outstanding
-                </CardDescription>
+                <CardDescription className='text-xs'>Outstanding</CardDescription>
               </div>
-              <CardTitle className="text-2xl font-bold">
-                {formatCurrency(totalOutstanding)}
-              </CardTitle>
+              <CardTitle className='text-2xl font-bold'>{formatCurrency(totalOutstanding)}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                  <Percent className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <Card className='border-2'>
+            <CardHeader className='pb-3'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
+                  <Percent className='h-5 w-5 text-blue-600 dark:text-blue-400' />
                 </div>
-                <CardDescription className="text-xs">
-                  EMI Amount
-                </CardDescription>
+                <CardDescription className='text-xs'>EMI Amount</CardDescription>
               </div>
-              <CardTitle className="text-2xl font-bold">
-                {formatCurrency(loan.emiAmount)}
-              </CardTitle>
+              <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.emiAmount)}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-teal-100 dark:bg-teal-900/20 rounded-lg">
-                  <Calendar className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+          <Card className='border-2'>
+            <CardHeader className='pb-3'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='rounded-lg bg-teal-100 p-2 dark:bg-teal-900/20'>
+                  <Calendar className='h-5 w-5 text-teal-600 dark:text-teal-400' />
                 </div>
-                <CardDescription className="text-xs">
-                  Total Interest
-                </CardDescription>
+                <CardDescription className='text-xs'>Total Interest</CardDescription>
               </div>
-              <CardTitle className="text-2xl font-bold">
-                {formatCurrency(totalInterest)}
-              </CardTitle>
+              <CardTitle className='text-2xl font-bold'>{formatCurrency(totalInterest)}</CardTitle>
             </CardHeader>
           </Card>
         </div>
       </div>
 
       {/* Transactions Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Transactions</h2>
+      <div className='space-y-4'>
+        <div className='flex items-center justify-between'>
+          <h2 className='text-xl font-semibold'>Transactions</h2>
           <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
+            variant='outline'
+            size='sm'
+            className='h-9'
             onClick={() => exportCSVRef.current?.()}
             disabled={!canExport}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className='mr-2 h-4 w-4' />
             Export
           </Button>
         </div>
