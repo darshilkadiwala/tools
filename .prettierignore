@@ -1,0 +1,7 @@
+# Ignore configuration files that Prettier doesn't format
+.gitignore
+.prettierignore
+.npmrc
+
+# Ignore build artifacts and dependency folders
+node_modules

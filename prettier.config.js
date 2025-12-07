@@ -1,0 +1,38 @@
+/**  @type {import("prettier").Config} */
+export default {
+  semi: true,
+  trailingComma: 'all',
+  singleQuote: true,
+  printWidth: 120,
+  tabWidth: 2,
+  endOfLine: 'lf',
+  arrowParens: 'always',
+  bracketSameLine: true,
+  bracketSpacing: true,
+  useTabs: false,
+  quoteProps: 'as-needed',
+  jsxSingleQuote: true,
+  plugins: ['@ianvs/prettier-plugin-sort-imports', 'prettier-plugin-tailwindcss'],
+  tailwindFunctions: ['cva', 'cn', 'clsx', 'classNames'],
+  tailwindAttributes: [
+    'classNames',
+    '/.*classNames$/i', // Matches any attribute ending with "classNames" (case-insensitive)
+    '\\b\\w*([cC]lass)([nN]ame)?(s|es|[lL]ist)?\\b',
+    '["\'`]([^"\'`]*).*?["\'`]',
+  ],
+  importOrder: [
+    '<BUILTIN_MODULES>',
+    '',
+    '^(react/(.*)$)|^(react$)',
+    '',
+    '<THIRD_PARTY_MODULES>',
+    '',
+    '',
+    '^@/(?!types)',
+    '',
+    '^@/types',
+    '',
+    '^[.][.]/',
+    '^[./]',
+  ],
+};
