@@ -1,0 +1,7 @@
+# Cursor Rules
+
+## Commit Message Conventions
+
+> **Single Source of Truth:** The commit message conventions are defined in `.cursor/commands/generate-commit-message.md`. Always reference and follow the rules from that file when generating commit messages.
+
+When generating commit messages (via "Generate Commit Message" button in source control or when asked to write commit messages), always reference and follow the commit message conventions defined in `.cursor/commands/generate-commit-message.md`.
