@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/AppSidebar';
@@ -14,7 +16,10 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { useLoanContext } from '@/contexts/LoanContext';
 import { cn } from '@/lib/utils';
 
-function getBreadcrumbs(pathname: string, loans: ReturnType<typeof useLoanContext>['loans']) {
+function getBreadcrumbs(
+  pathname: string,
+  loans: ReturnType<typeof useLoanContext>['loans'],
+): Array<{ label: string; href?: string }> {
   const paths = pathname.split('/').filter(Boolean);
   const breadcrumbs: Array<{ label: string; href?: string }> = [];
 
@@ -46,7 +51,7 @@ function getBreadcrumbs(pathname: string, loans: ReturnType<typeof useLoanContex
   return breadcrumbs;
 }
 
-export function Layout() {
+export function Layout(): JSX.Element {
   const location = useLocation();
   const { loans } = useLoanContext();
   const breadcrumbs = getBreadcrumbs(location.pathname, loans);

@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { Layout } from './components/Layout';
@@ -7,7 +9,7 @@ import { EditLoanPage } from './pages/EditLoanPage';
 import { LoanDetailsPage } from './pages/LoanDetailsPage';
 import { LoansPage } from './pages/LoansPage';
 
-function App() {
+export function App(): JSX.Element {
   return (
     <BrowserRouter>
       <LoanProvider>
@@ -23,5 +25,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

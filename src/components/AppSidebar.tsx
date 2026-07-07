@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { CalculatorIcon, Car, FileText, GraduationCap, Home, Plus, Wallet } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -52,7 +54,7 @@ function groupLoansByType(loans: Loan[]): Record<LoanType, Loan[]> {
   return grouped;
 }
 
-export function AppSidebar() {
+export function AppSidebar(): JSX.Element {
   const { loans } = useLoanContext();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,8 +63,8 @@ export function AppSidebar() {
   const groupedLoans = groupLoansByType(loans.loans);
 
   // Handle navigation and close sidebar on mobile
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  const handleNavigation = (path: string): void => {
+    void navigate(path);
     if (isMobile) {
       setOpenMobile(false);
     }
@@ -73,7 +75,11 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size='lg' onClick={() => handleNavigation('/')}>
+            <SidebarMenuButton
+              size='lg'
+              onClick={() => {
+                handleNavigation('/');
+              }}>
               <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg'>
                 <CalculatorIcon className='size-5' />
               </div>

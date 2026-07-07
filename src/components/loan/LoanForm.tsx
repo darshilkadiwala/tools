@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -28,7 +30,7 @@ interface LoanFormProps {
   onCancel?: () => void;
 }
 
-export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
+export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Element {
   const form = useForm<LoanFormValues>({
     resolver: zodResolver(loanFormSchema),
     defaultValues: loan
@@ -52,7 +54,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
         },
   });
 
-  const handleSubmit = async (data: LoanFormValues) => {
+  const handleSubmit = async (data: LoanFormValues): Promise<void> => {
     await onSubmit({
       name: data.name,
       type: data.type as LoanType,
@@ -66,7 +68,11 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className='relative space-y-6'>
+      <form
+        onSubmit={(e) => {
+          void form.handleSubmit(handleSubmit)(e);
+        }}
+        className='relative space-y-6'>
         {/* Basic Information Section */}
         <div className='space-y-4'>
           <div>

@@ -6,12 +6,21 @@ import { dateToISO, generateUUID } from '@/lib/utils';
 
 import type { Loan } from '@/types';
 
-export function useLoans() {
+export function useLoans(): {
+  loans: Loan[];
+  loading: boolean;
+  error: Error | null;
+  createLoan: (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => Promise<Loan>;
+  updateLoan: (id: string, updates: Partial<Loan>) => Promise<Loan>;
+  deleteLoan: (id: string) => Promise<void>;
+  getLoan: (id: string) => Promise<Loan | undefined>;
+  refreshLoans: () => Promise<void>;
+} {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadLoans = useCallback(async () => {
+  const loadLoans = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       const allLoans = await db.loans.toArray();
@@ -25,11 +34,11 @@ export function useLoans() {
   }, []);
 
   useEffect(() => {
-    loadLoans();
+    void loadLoans();
   }, [loadLoans]);
 
   const createLoan = useCallback(
-    async (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => {
+    async (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>): Promise<Loan> => {
       try {
         const emiAmount = calculateEMI(loanData.principal, loanData.interestRate, loanData.tenureMonths);
 
@@ -52,7 +61,7 @@ export function useLoans() {
   );
 
   const updateLoan = useCallback(
-    async (id: string, updates: Partial<Loan>) => {
+    async (id: string, updates: Partial<Loan>): Promise<Loan> => {
       try {
         const existingLoan = await db.loans.get(id);
         if (!existingLoan) {
@@ -89,7 +98,7 @@ export function useLoans() {
   );
 
   const deleteLoan = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<void> => {
       try {
         // Delete associated EMI schedules and modifications
         await db.emiSchedules.where('loanId').equals(id).delete();
@@ -103,7 +112,7 @@ export function useLoans() {
     [loadLoans],
   );
 
-  const getLoan = useCallback(async (id: string) => {
+  const getLoan = useCallback(async (id: string): Promise<Loan | undefined> => {
     try {
       return await db.loans.get(id);
     } catch (err) {

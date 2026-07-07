@@ -5,12 +5,19 @@ import { db } from '@/lib/db';
 
 import type { EMIScheduleEntry } from '@/types';
 
-export function useEMISchedule(loanId: string | null) {
+export function useEMISchedule(loanId: string | null): {
+  schedule: EMIScheduleEntry[];
+  loading: boolean;
+  error: Error | null;
+  refreshSchedule: () => Promise<void>;
+  regenerateSchedule: () => Promise<EMIScheduleEntry[]>;
+  markAsPaid: (emiId: string) => Promise<void>;
+} {
   const [schedule, setSchedule] = useState<EMIScheduleEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadSchedule = useCallback(async () => {
+  const loadSchedule = useCallback(async (): Promise<void> => {
     if (!loanId) {
       setSchedule([]);
       setLoading(false);
@@ -52,7 +59,7 @@ export function useEMISchedule(loanId: string | null) {
           const newStatus = getEMIStatus(emi.dueDate, emi.status);
           if (newStatus !== emi.status) {
             // Update in database if status changed
-            db.emiSchedules.update(emi.id, { status: newStatus }).catch(console.error);
+            void db.emiSchedules.update(emi.id, { status: newStatus }).catch(console.error);
             return { ...emi, status: newStatus };
           }
           return emi;
@@ -68,10 +75,10 @@ export function useEMISchedule(loanId: string | null) {
   }, [loanId]);
 
   useEffect(() => {
-    loadSchedule();
+    void loadSchedule();
   }, [loadSchedule]);
 
-  const regenerateSchedule = useCallback(async () => {
+  const regenerateSchedule = useCallback(async (): Promise<EMIScheduleEntry[]> => {
     if (!loanId) return;
 
     try {
@@ -98,7 +105,7 @@ export function useEMISchedule(loanId: string | null) {
   }, [loanId, loadSchedule]);
 
   const markAsPaid = useCallback(
-    async (emiId: string) => {
+    async (emiId: string): Promise<void> => {
       try {
         await db.emiSchedules.update(emiId, { status: 'paid' });
         await loadSchedule();

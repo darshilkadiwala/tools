@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { format } from 'date-fns';
 import { AlertCircle, CheckCircle2, Clock, Edit } from 'lucide-react';
 
@@ -15,8 +17,13 @@ interface EMITableProps {
   showActions?: boolean;
 }
 
-export function EMITable({ schedule, onSelectEMI, selectedEMIs = [], showActions = false }: EMITableProps) {
-  const handleRowClick = (emiNumber: number) => {
+export function EMITable({
+  schedule,
+  onSelectEMI,
+  selectedEMIs = [],
+  showActions = false,
+}: EMITableProps): JSX.Element {
+  const handleRowClick = (emiNumber: number): void => {
     if (!onSelectEMI) return;
 
     if (selectedEMIs.includes(emiNumber)) {
@@ -26,7 +33,7 @@ export function EMITable({ schedule, onSelectEMI, selectedEMIs = [], showActions
     }
   };
 
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAll = (checked: boolean): void => {
     if (!onSelectEMI) return;
 
     if (checked) {
@@ -45,7 +52,7 @@ export function EMITable({ schedule, onSelectEMI, selectedEMIs = [], showActions
   const someSelected =
     selectableEMIs.length > 0 && selectableEMIs.some((emi) => selectedEMIs.includes(emi.emiNumber)) && !allSelected;
 
-  const getStatusIcon = (status: EMIScheduleEntry['status']) => {
+  const getStatusIcon = (status: EMIScheduleEntry['status']): JSX.Element => {
     switch (status) {
       case 'paid':
         return <CheckCircle2 className='h-4 w-4 text-green-500' />;

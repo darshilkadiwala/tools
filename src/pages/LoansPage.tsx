@@ -1,10 +1,12 @@
+import type { JSX } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 
 import { LoanList } from '@/components/loan/LoanList';
 import { Button } from '@/components/ui/button';
 import { useLoanContext } from '@/contexts/LoanContext';
 
-export function LoansPage() {
+export function LoansPage(): JSX.Element {
   const { loans } = useLoanContext();
   const navigate = useNavigate();
 
@@ -26,14 +28,18 @@ export function LoansPage() {
           <p className='mb-2 font-medium'>Error loading loans</p>
           <p className='text-sm'>{loans.error.message}</p>
         </div>
-        <Button variant='outline' onClick={() => loans.refreshLoans()}>
+        <Button
+          variant='outline'
+          onClick={() => {
+            void loans.refreshLoans();
+          }}>
           Retry
         </Button>
       </div>
     );
   }
 
-  const handleDeleteLoan = async (loanId: string) => {
+  const handleDeleteLoan = async (loanId: string): Promise<void> => {
     if (!confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
       return;
     }
@@ -48,10 +54,18 @@ export function LoansPage() {
   return (
     <LoanList
       loans={loans.loans}
-      onView={(id) => navigate(`/loans/${id}`)}
-      onEdit={(id) => navigate(`/loans/${id}/edit`)}
-      onDelete={handleDeleteLoan}
-      onCreateNew={() => navigate('/loans/create')}
+      onView={(id) => {
+        void navigate(`/loans/${id}`);
+      }}
+      onEdit={(id) => {
+        void navigate(`/loans/${id}/edit`);
+      }}
+      onDelete={(id) => {
+        void handleDeleteLoan(id);
+      }}
+      onCreateNew={() => {
+        void navigate('/loans/create');
+      }}
     />
   );
 }

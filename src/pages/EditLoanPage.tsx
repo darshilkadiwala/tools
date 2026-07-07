@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ import { useLoanContext } from '@/contexts/LoanContext';
 
 import type { Loan } from '@/types';
 
-export function EditLoanPage() {
+export function EditLoanPage(): JSX.Element | null {
   const { id } = useParams<{ id: string }>();
   const { loans } = useLoanContext();
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export function EditLoanPage() {
 
   useEffect(() => {
     if (!loans.loading && !loan) {
-      navigate('/');
+      void navigate('/');
     }
   }, [loans.loading, loan, navigate]);
 
@@ -34,11 +34,11 @@ export function EditLoanPage() {
 
   if (!loan) return null;
 
-  const handleUpdateLoan = async (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => {
+  const handleUpdateLoan = async (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>): Promise<void> => {
     try {
       setError(null);
       await loans.updateLoan(loan.id, data);
-      navigate('/');
+      void navigate('/');
     } catch (error) {
       console.error('Failed to update loan:', error);
       setError(error instanceof Error ? error.message : 'Failed to update loan');
@@ -58,7 +58,13 @@ export function EditLoanPage() {
         <p className='text-muted-foreground text-base'>Update the loan details below</p>
       </div>
 
-      <LoanForm loan={loan} onSubmit={handleUpdateLoan} onCancel={() => navigate('/')} />
+      <LoanForm
+        loan={loan}
+        onSubmit={handleUpdateLoan}
+        onCancel={() => {
+          void navigate('/');
+        }}
+      />
     </div>
   );
 }

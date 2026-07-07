@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { Plus, Search } from 'lucide-react';
 
@@ -17,7 +17,7 @@ interface LoanListProps {
   onCreateNew: () => void;
 }
 
-export function LoanList({ loans, onView, onEdit, onDelete, onCreateNew }: LoanListProps) {
+export function LoanList({ loans, onView, onEdit, onDelete, onCreateNew }: LoanListProps): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredLoans = loans.filter(

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -43,7 +43,7 @@ export function InterestRateModifier({
   currentRate,
   selectedEMIs = [],
   onSuccess,
-}: InterestRateModifierProps) {
+}: InterestRateModifierProps): JSX.Element {
   const { changeInterestRate } = useLoanOperations();
   const { refreshSchedule } = useEMISchedule(loanId);
   const [loading, setLoading] = useState(false);
@@ -59,7 +59,7 @@ export function InterestRateModifier({
 
   const applyTo = form.watch('applyTo');
 
-  const handleSubmit = async (data: InterestRateFormValues) => {
+  const handleSubmit = async (data: InterestRateFormValues): Promise<void> => {
     try {
       setLoading(true);
       const affectedEMIs = data.applyTo === 'all' ? 'all' : data.selectedEMIs || [];
@@ -87,7 +87,10 @@ export function InterestRateModifier({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <form
+            onSubmit={(e) => {
+              void form.handleSubmit(handleSubmit)(e);
+            }}>
             <div className='space-y-4 py-4'>
               <div className='text-muted-foreground text-sm'>Current Interest Rate: {currentRate}% p.a.</div>
 

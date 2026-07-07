@@ -1,38 +1,21 @@
-/* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useId, type ComponentProps } from 'react';
+import { useId, type ComponentProps, type JSX } from 'react';
 
-import * as LabelPrimitive from '@radix-ui/react-label';
+import type * as LabelPrimitive from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
-import {
-  Controller,
-  FormProvider,
-  useFormContext,
-  useFormState,
-  type ControllerProps,
-  type FieldPath,
-  type FieldValues,
-} from 'react-hook-form';
+import { Controller, FormProvider, type ControllerProps, type FieldPath, type FieldValues } from 'react-hook-form';
 
 import { Label } from '@/components/ui/label';
+import { FormFieldContext, FormItemContext, useFormField } from '@/hooks/use-form-field';
 import { cn } from '@/lib/utils';
 
 const Form = FormProvider;
-
-type FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
-> = {
-  name: TName;
-};
-
-const FormFieldContext = createContext<FormFieldContextValue>({} as FormFieldContextValue);
 
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
   ...props
-}: ControllerProps<TFieldValues, TName>) => {
+}: ControllerProps<TFieldValues, TName>): JSX.Element => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
@@ -40,36 +23,7 @@ const FormField = <
   );
 };
 
-const useFormField = () => {
-  const fieldContext = useContext(FormFieldContext);
-  const itemContext = useContext(FormItemContext);
-  const { getFieldState } = useFormContext();
-  const formState = useFormState({ name: fieldContext.name });
-  const fieldState = getFieldState(fieldContext.name, formState);
-
-  if (!fieldContext) {
-    throw new Error('useFormField should be used within <FormField>');
-  }
-
-  const { id } = itemContext;
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  };
-};
-
-type FormItemContextValue = {
-  id: string;
-};
-
-const FormItemContext = createContext<FormItemContextValue>({} as FormItemContextValue);
-
-function FormItem({ className, ...props }: ComponentProps<'div'>) {
+function FormItem({ className, ...props }: ComponentProps<'div'>): JSX.Element {
   const id = useId();
 
   return (
@@ -79,7 +33,7 @@ function FormItem({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-function FormLabel({ className, ...props }: ComponentProps<typeof LabelPrimitive.Root>) {
+function FormLabel({ className, ...props }: ComponentProps<typeof LabelPrimitive.Root>): JSX.Element {
   const { error, formItemId } = useFormField();
 
   return (
@@ -93,7 +47,7 @@ function FormLabel({ className, ...props }: ComponentProps<typeof LabelPrimitive
   );
 }
 
-function FormControl({ ...props }: ComponentProps<typeof Slot>) {
+function FormControl({ ...props }: ComponentProps<typeof Slot>): JSX.Element {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
   return (
@@ -107,7 +61,7 @@ function FormControl({ ...props }: ComponentProps<typeof Slot>) {
   );
 }
 
-function FormDescription({ className, ...props }: ComponentProps<'p'>) {
+function FormDescription({ className, ...props }: ComponentProps<'p'>): JSX.Element {
   const { formDescriptionId } = useFormField();
 
   return (
@@ -120,7 +74,7 @@ function FormDescription({ className, ...props }: ComponentProps<'p'>) {
   );
 }
 
-function FormMessage({ className, ...props }: ComponentProps<'p'>) {
+function FormMessage({ className, ...props }: ComponentProps<'p'>): JSX.Element | null {
   const { error, formMessageId } = useFormField();
   const body = error ? String(error?.message ?? '') : props.children;
 
@@ -135,4 +89,4 @@ function FormMessage({ className, ...props }: ComponentProps<'p'>) {
   );
 }
 
-export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
+export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage };

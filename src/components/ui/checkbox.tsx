@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, JSX } from 'react';
 
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { CheckIcon } from 'lucide-react';
@@ -11,7 +11,7 @@ function Checkbox({
   ...props
 }: ComponentProps<typeof CheckboxPrimitive.Root> & {
   checked?: boolean | 'indeterminate';
-}) {
+}): JSX.Element {
   const isIndeterminate = checked === 'indeterminate';
   const isChecked = checked === true;
 

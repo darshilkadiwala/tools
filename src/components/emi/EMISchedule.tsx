@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
 import { getYear } from 'date-fns';
 import { Calendar, CalendarDays } from 'lucide-react';
@@ -32,7 +32,7 @@ export function EMISchedule({
   selectedEMIs: externalSelectedEMIs,
   onRegenerateReady,
   onExportReady,
-}: EMIScheduleProps) {
+}: EMIScheduleProps): JSX.Element {
   const { schedule, loading, error, regenerateSchedule } = useEMISchedule(loanId);
   const [internalSelectedEMIs, setInternalSelectedEMIs] = useState<number[]>([]);
   const currentYear = new Date().getFullYear();
@@ -70,7 +70,7 @@ export function EMISchedule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableYears]);
 
-  const handleSelectedEMIsChange = (emiNumbers: number[]) => {
+  const handleSelectedEMIsChange = (emiNumbers: number[]): void => {
     if (onSelectedEMIsChange) {
       onSelectedEMIsChange(emiNumbers);
     } else {
@@ -78,7 +78,7 @@ export function EMISchedule({
     }
   };
 
-  const exportToCSV = useCallback(() => {
+  const exportToCSV = useCallback((): void => {
     if (filteredSchedule.length === 0) return;
 
     const headers = ['EMI #', 'Due Date', 'Principal', 'Interest', 'Total', 'Outstanding Principal', 'Status'];

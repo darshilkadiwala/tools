@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -34,7 +34,13 @@ interface PrePaymentDialogProps {
   onSuccess?: () => void;
 }
 
-export function PrePaymentDialog({ open, onOpenChange, loanId, maxEMINumber, onSuccess }: PrePaymentDialogProps) {
+export function PrePaymentDialog({
+  open,
+  onOpenChange,
+  loanId,
+  maxEMINumber,
+  onSuccess,
+}: PrePaymentDialogProps): JSX.Element {
   const { applyPrepayment } = useLoanOperations();
   const { refreshSchedule } = useEMISchedule(loanId);
   const [loading, setLoading] = useState(false);
@@ -48,7 +54,7 @@ export function PrePaymentDialog({ open, onOpenChange, loanId, maxEMINumber, onS
     },
   });
 
-  const handleSubmit = async (data: PrepaymentFormValues) => {
+  const handleSubmit = async (data: PrepaymentFormValues): Promise<void> => {
     try {
       setLoading(true);
       await applyPrepayment(loanId, data.amount, data.emiNumber, data.reduceTenure);
@@ -74,7 +80,10 @@ export function PrePaymentDialog({ open, onOpenChange, loanId, maxEMINumber, onS
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <form
+            onSubmit={(e) => {
+              void form.handleSubmit(handleSubmit)(e);
+            }}>
             <div className='space-y-4 py-4'>
               <FormField
                 control={form.control}
@@ -125,7 +134,7 @@ export function PrePaymentDialog({ open, onOpenChange, loanId, maxEMINumber, onS
                     <FormControl>
                       <input type='checkbox' checked={field.value} onChange={field.onChange} className='rounded' />
                     </FormControl>
-                    <FormLabel className='!mt-0'>Reduce tenure (instead of reducing EMI amount)</FormLabel>
+                    <FormLabel className='mt-0!'>Reduce tenure (instead of reducing EMI amount)</FormLabel>
                   </FormItem>
                 )}
               />

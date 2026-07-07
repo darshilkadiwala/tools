@@ -4,11 +4,29 @@ import { applyStepUp as applyStepUpCalculation, recalculateAfterPrepayment } fro
 import { db } from '@/lib/db';
 import { dateToISO, generateUUID } from '@/lib/utils';
 
-import type { LoanModification } from '@/types';
+import type { EMIScheduleEntry, Loan, LoanModification } from '@/types';
 
 import { useLoans } from './useLoans';
 
-export function useLoanOperations() {
+export function useLoanOperations(): {
+  applyPrepayment: (
+    loanId: string,
+    prepaymentAmount: number,
+    prepaymentEMINumber: number,
+    reduceTenure?: boolean,
+  ) => Promise<{ updatedLoan: Loan; updatedSchedule: EMIScheduleEntry[] }>;
+  applyStepUp: (
+    loanId: string,
+    stepUpAmount: number | null,
+    stepUpPercentage: number | null,
+    fromEMINumber: number,
+  ) => Promise<{ updatedLoan: Loan; updatedSchedule: EMIScheduleEntry[] }>;
+  changeInterestRate: (
+    loanId: string,
+    newInterestRate: number,
+    affectedEMINumbers: number[] | 'all',
+  ) => Promise<{ updatedSchedule: EMIScheduleEntry[] }>;
+} {
   const { updateLoan, refreshLoans } = useLoans();
 
   const applyPrepayment = useCallback(

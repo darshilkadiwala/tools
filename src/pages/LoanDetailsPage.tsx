@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 
 import { Calendar, Download, PencilIcon, Percent, RefreshCwIcon, TrendingUp, Wallet } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { useLoanContext } from '@/contexts/LoanContext';
 import { useEMISchedule } from '@/hooks/useEMISchedule';
 import { formatCurrency } from '@/lib/calculations';
 
-export function LoanDetailsPage() {
+export function LoanDetailsPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { loans } = useLoanContext();
@@ -23,6 +23,7 @@ export function LoanDetailsPage() {
   const [showInterestChange, setShowInterestChange] = useState(false);
   const [selectedEMIs, setSelectedEMIs] = useState<number[]>([]);
   const [canExport, setCanExport] = useState(false);
+  const [canRegenerate, setCanRegenerate] = useState(false);
   const regenerateScheduleRef = useRef<(() => Promise<void>) | null>(null);
   const exportCSVRef = useRef<(() => void) | null>(null);
 
@@ -38,7 +39,7 @@ export function LoanDetailsPage() {
 
   useEffect(() => {
     if (!loans.loading && !loan) {
-      navigate('/');
+      void navigate('/');
     }
   }, [loans.loading, loan, navigate]);
 
@@ -64,16 +65,26 @@ export function LoanDetailsPage() {
         <div className='hidden items-center justify-between gap-2 md:flex'>
           <Button
             variant='outline'
-            onClick={() => regenerateScheduleRef.current?.()}
-            disabled={!regenerateScheduleRef.current}>
+            onClick={() => {
+              void regenerateScheduleRef.current?.();
+            }}
+            disabled={!canRegenerate}>
             <RefreshCwIcon className='mr-2 h-4 w-4' />
             Regenerate
           </Button>
-          <Button variant='outline' onClick={() => exportCSVRef.current?.()} disabled={!exportCSVRef.current}>
+          <Button
+            variant='outline'
+            onClick={() => {
+              exportCSVRef.current?.();
+            }}
+            disabled={!canExport}>
             <Download className='mr-2 h-4 w-4' />
             Export CSV
           </Button>
-          <Button onClick={() => navigate(`/loans/${id}/edit`)}>
+          <Button
+            onClick={() => {
+              void navigate(`/loans/${id}/edit`);
+            }}>
             <PencilIcon className='mr-2 h-4 w-4' />
             Edit Loan
           </Button>
@@ -138,7 +149,9 @@ export function LoanDetailsPage() {
             variant='outline'
             size='sm'
             className='h-9'
-            onClick={() => exportCSVRef.current?.()}
+            onClick={() => {
+              exportCSVRef.current?.();
+            }}
             disabled={!canExport}>
             <Download className='mr-2 h-4 w-4' />
             Export
@@ -154,6 +167,7 @@ export function LoanDetailsPage() {
           selectedEMIs={selectedEMIs}
           onRegenerateReady={(fn) => {
             regenerateScheduleRef.current = fn;
+            setCanRegenerate(!!fn);
           }}
           onExportReady={(fn) => {
             exportCSVRef.current = fn;

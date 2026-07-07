@@ -17,21 +17,26 @@ const compat = new FlatCompat({
 export default defineConfig([
   globalIgnores(['dist']),
   eslintConfigPrettier,
-  ...tslintConfigs.recommendedTypeChecked,
+  ...tslintConfigs.recommended,
+  ...tslintConfigs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+  })),
   ...compat.extends('plugin:import/recommended', 'plugin:import/typescript', 'plugin:prettier/recommended'),
   {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     plugins: { '@typescript-eslint': tslintPlugin },
     languageOptions: {
       globals: { ...globals.node, ...globals.jest },
       parser: tslintParser,
-      ecmaVersion: 5,
+      ecmaVersion: 2020,
       parserOptions: {
-        project: ['tsconfig.app.json', 'tsconfig.node.json'],
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
     settings: {
-      'import/resolver': { typescript: { project: './tsconfig.app.json' } },
+      'import/resolver': { typescript: { project: './tsconfig.json' } },
     },
     rules: {
       '@typescript-eslint/consistent-indexed-object-style': ['error', 'record'],
@@ -117,8 +122,7 @@ export default defineConfig([
       ...pluginReactHooks.configs.recommended.rules,
       // React scope no longer necessary with new JSX transform.
       'react/react-in-jsx-scope': 'off',
-      // React Refresh
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react-refresh/only-export-components': 'error',
     },
   },
   {
@@ -126,7 +130,10 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       'import/no-default-export': 'off',
+      'import/no-unresolved': 'off',
       'no-restricted-exports': 'off',
+      // '@typescript-eslint/explicit-function-return-type': 'off',
+      // '@typescript-eslint/explicit-module-boundary-types': 'off',
     },
   },
 ]);

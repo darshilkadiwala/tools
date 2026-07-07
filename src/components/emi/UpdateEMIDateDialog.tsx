@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addMonths, parse } from 'date-fns';
@@ -41,7 +41,13 @@ interface UpdateEMIDateDialogProps {
   onSuccess?: () => void;
 }
 
-export function UpdateEMIDateDialog({ open, onOpenChange, loanId, maxEMINumber, onSuccess }: UpdateEMIDateDialogProps) {
+export function UpdateEMIDateDialog({
+  open,
+  onOpenChange,
+  loanId,
+  maxEMINumber,
+  onSuccess,
+}: UpdateEMIDateDialogProps): JSX.Element {
   const { refreshSchedule } = useEMISchedule(loanId);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +60,7 @@ export function UpdateEMIDateDialog({ open, onOpenChange, loanId, maxEMINumber, 
     },
   });
 
-  const handleSubmit = async (data: UpdateEMIDateFormValues) => {
+  const handleSubmit = async (data: UpdateEMIDateFormValues): Promise<void> => {
     try {
       setLoading(true);
 
@@ -120,7 +126,10 @@ export function UpdateEMIDateDialog({ open, onOpenChange, loanId, maxEMINumber, 
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <form
+            onSubmit={(e) => {
+              void form.handleSubmit(handleSubmit)(e);
+            }}>
             <div className='space-y-4 py-4'>
               <FormField
                 control={form.control}

@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-named-as-default
 import Dexie, { type Table } from 'dexie';
 
 import type { EMIScheduleEntry, Loan, LoanModification } from '@/types';

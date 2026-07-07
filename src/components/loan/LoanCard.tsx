@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { format } from 'date-fns';
 import { Car, FileText, GraduationCap, Home, Trash2Icon, Wallet } from 'lucide-react';
 
@@ -31,7 +33,7 @@ interface LoanCardProps {
   onDelete: (loanId: string) => void;
 }
 
-export function LoanCard({ loan, onView, onEdit, onDelete }: LoanCardProps) {
+export function LoanCard({ loan, onView, onEdit, onDelete }: LoanCardProps): JSX.Element {
   const Icon = loanTypeIcons[loan.type];
 
   return (

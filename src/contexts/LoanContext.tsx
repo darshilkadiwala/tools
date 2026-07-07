@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext } from 'react';
+import type { JSX, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 
 import { useLoans } from '@/hooks/useLoans';
 
@@ -8,14 +9,14 @@ interface LoanContextType {
 
 const LoanContext = createContext<LoanContextType | undefined>(undefined);
 
-export function LoanProvider({ children }: { children: ReactNode }) {
+export function LoanProvider({ children }: { children: ReactNode }): JSX.Element {
   const loans = useLoans();
 
   return <LoanContext.Provider value={{ loans }}>{children}</LoanContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useLoanContext() {
+export function useLoanContext(): LoanContextType {
   const context = useContext(LoanContext);
   if (context === undefined) {
     throw new Error('useLoanContext must be used within a LoanProvider');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -48,7 +48,7 @@ interface StepUpDialogProps {
   onSuccess?: () => void;
 }
 
-export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSuccess }: StepUpDialogProps) {
+export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSuccess }: StepUpDialogProps): JSX.Element {
   const { applyStepUp } = useLoanOperations();
   const { refreshSchedule } = useEMISchedule(loanId);
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
 
   const stepUpType = form.watch('stepUpType');
 
-  const handleSubmit = async (data: StepUpFormValues) => {
+  const handleSubmit = async (data: StepUpFormValues): Promise<void> => {
     try {
       setLoading(true);
       await applyStepUp(
@@ -97,7 +97,10 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <form
+            onSubmit={(e) => {
+              void form.handleSubmit(handleSubmit)(e);
+            }}>
             <div className='space-y-4 py-4'>
               <FormField
                 control={form.control}

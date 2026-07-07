@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -8,16 +8,16 @@ import { useLoanContext } from '@/contexts/LoanContext';
 
 import type { Loan } from '@/types';
 
-export function CreateLoanPage() {
+export function CreateLoanPage(): JSX.Element {
   const { loans } = useLoanContext();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
-  const handleCreateLoan = async (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => {
+  const handleCreateLoan = async (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>): Promise<void> => {
     try {
       setError(null);
       await loans.createLoan(data);
-      navigate('/');
+      void navigate('/');
     } catch (error) {
       console.error('Failed to create loan:', error);
       setError(error instanceof Error ? error.message : 'Failed to create loan');
@@ -36,7 +36,12 @@ export function CreateLoanPage() {
       <p className='text-muted-foreground text-base'>Fill in the details below to create a new loan account</p>
       <Separator className='my-4' />
 
-      <LoanForm onSubmit={handleCreateLoan} onCancel={() => navigate('/')} />
+      <LoanForm
+        onSubmit={handleCreateLoan}
+        onCancel={() => {
+          void navigate('/');
+        }}
+      />
     </>
   );
 }
