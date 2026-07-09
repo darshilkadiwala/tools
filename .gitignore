@@ -15,8 +15,13 @@ dist-ssr
 .eslintcache
 
 # Editor directories and files
+# IDE - VSCode
 .vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 !.vscode/extensions.json
+
 .idea
 .DS_Store
 *.suo

@@ -1,0 +1,5 @@
+{
+  "cSpell.words": ["fontsource", "grotesk", "haspopup", "oklch", "roboto", "shadcn"],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}
