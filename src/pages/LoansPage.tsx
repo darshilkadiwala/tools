@@ -1,24 +1,22 @@
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
+import { DeleteLoanDialog } from '@/components/loan/DeleteLoanDialog';
 import { LoanList } from '@/components/loan/LoanList';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/page-loader';
 import { useLoanContext } from '@/contexts/LoanContext';
+
+import type { Loan } from '@/types';
 
 export function LoansPage(): JSX.Element {
   const { loans } = useLoanContext();
   const navigate = useNavigate();
+  const [loanToDelete, setLoanToDelete] = useState<Loan | null>(null);
 
   if (loans.loading) {
-    return (
-      <div className='flex items-center justify-center py-16'>
-        <div className='text-center'>
-          <div className='border-primary mb-4 inline-block h-8 w-8 animate-spin rounded-full border-b-2'></div>
-          <p className='text-muted-foreground'>Loading loans...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message='Loading loans...' />;
   }
 
   if (loans.error) {
@@ -39,33 +37,35 @@ export function LoansPage(): JSX.Element {
     );
   }
 
-  const handleDeleteLoan = async (loanId: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
-      return;
-    }
-    try {
-      await loans.deleteLoan(loanId);
-    } catch (error) {
-      console.error('Failed to delete loan:', error);
-      alert('Failed to delete loan');
-    }
-  };
-
   return (
-    <LoanList
-      loans={loans.loans}
-      onView={(id) => {
-        void navigate(`/loans/${id}`);
-      }}
-      onEdit={(id) => {
-        void navigate(`/loans/${id}/edit`);
-      }}
-      onDelete={(id) => {
-        void handleDeleteLoan(id);
-      }}
-      onCreateNew={() => {
-        void navigate('/loans/create');
-      }}
-    />
+    <div className='space-y-4'>
+      <LoanList
+        loans={loans.loans}
+        onView={(id) => {
+          void navigate(`/loans/${id}`);
+        }}
+        onEdit={(id) => {
+          void navigate(`/loans/${id}/edit`);
+        }}
+        onDelete={(id) => {
+          setLoanToDelete(loans.loans.find((loan) => loan.id === id) ?? null);
+        }}
+        onCreateNew={() => {
+          void navigate('/loans/create');
+        }}
+      />
+
+      {loanToDelete ? (
+        <DeleteLoanDialog
+          loan={loanToDelete}
+          open={loanToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setLoanToDelete(null);
+            }
+          }}
+        />
+      ) : null}
+    </div>
   );
 }

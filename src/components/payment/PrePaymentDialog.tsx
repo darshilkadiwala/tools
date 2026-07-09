@@ -14,8 +14,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
-import { useEMISchedule } from '@/hooks/useEMISchedule';
+import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanOperations } from '@/hooks/useLoanOperations';
 
 const prepaymentSchema = z.object({
@@ -42,8 +43,9 @@ export function PrePaymentDialog({
   onSuccess,
 }: PrePaymentDialogProps): JSX.Element {
   const { applyPrepayment } = useLoanOperations();
-  const { refreshSchedule } = useEMISchedule(loanId);
+  const { refreshSchedule } = useEMISchedule();
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<PrepaymentFormValues>({
     resolver: zodResolver(prepaymentSchema),
@@ -57,6 +59,7 @@ export function PrePaymentDialog({
   const handleSubmit = async (data: PrepaymentFormValues): Promise<void> => {
     try {
       setLoading(true);
+      setSubmitError(null);
       await applyPrepayment(loanId, data.amount, data.emiNumber, data.reduceTenure);
       await refreshSchedule();
       form.reset();
@@ -64,7 +67,7 @@ export function PrePaymentDialog({
       onSuccess?.();
     } catch (error) {
       console.error('Prepayment failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to apply prepayment');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to apply prepayment');
     } finally {
       setLoading(false);
     }
@@ -85,6 +88,7 @@ export function PrePaymentDialog({
               void form.handleSubmit(handleSubmit)(e);
             }}>
             <div className='space-y-4 py-4'>
+              {submitError && <InlineError message={submitError} />}
               <FormField
                 control={form.control}
                 name='amount'

@@ -14,9 +14,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEMISchedule } from '@/hooks/useEMISchedule';
+import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanOperations } from '@/hooks/useLoanOperations';
 
 const stepUpSchema = z
@@ -50,8 +51,9 @@ interface StepUpDialogProps {
 
 export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSuccess }: StepUpDialogProps): JSX.Element {
   const { applyStepUp } = useLoanOperations();
-  const { refreshSchedule } = useEMISchedule(loanId);
+  const { refreshSchedule } = useEMISchedule();
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<StepUpFormValues>({
     resolver: zodResolver(stepUpSchema),
@@ -68,6 +70,7 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
   const handleSubmit = async (data: StepUpFormValues): Promise<void> => {
     try {
       setLoading(true);
+      setSubmitError(null);
       await applyStepUp(
         loanId,
         data.stepUpType === 'amount' ? data.amount || null : null,
@@ -80,7 +83,7 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
       onSuccess?.();
     } catch (error) {
       console.error('Step-up failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to apply step-up');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to apply step-up');
     } finally {
       setLoading(false);
     }
@@ -102,6 +105,7 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
               void form.handleSubmit(handleSubmit)(e);
             }}>
             <div className='space-y-4 py-4'>
+              {submitError && <InlineError message={submitError} />}
               <FormField
                 control={form.control}
                 name='stepUpType'
@@ -114,7 +118,7 @@ export function StepUpDialog({ open, onOpenChange, loanId, maxEMINumber, onSucce
                           <SelectValue placeholder='Select type' />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position='popper'>
                         <SelectItem value='amount'>Fixed Amount</SelectItem>
                         <SelectItem value='percentage'>Percentage</SelectItem>
                       </SelectContent>

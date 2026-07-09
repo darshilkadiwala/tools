@@ -14,9 +14,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEMISchedule } from '@/hooks/useEMISchedule';
+import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanOperations } from '@/hooks/useLoanOperations';
 
 const interestRateSchema = z.object({
@@ -45,8 +46,9 @@ export function InterestRateModifier({
   onSuccess,
 }: InterestRateModifierProps): JSX.Element {
   const { changeInterestRate } = useLoanOperations();
-  const { refreshSchedule } = useEMISchedule(loanId);
+  const { refreshSchedule } = useEMISchedule();
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<InterestRateFormValues>({
     resolver: zodResolver(interestRateSchema),
@@ -62,6 +64,7 @@ export function InterestRateModifier({
   const handleSubmit = async (data: InterestRateFormValues): Promise<void> => {
     try {
       setLoading(true);
+      setSubmitError(null);
       const affectedEMIs = data.applyTo === 'all' ? 'all' : data.selectedEMIs || [];
 
       await changeInterestRate(loanId, data.newInterestRate, affectedEMIs);
@@ -71,7 +74,7 @@ export function InterestRateModifier({
       onSuccess?.();
     } catch (error) {
       console.error('Interest rate change failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to change interest rate');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to change interest rate');
     } finally {
       setLoading(false);
     }
@@ -92,6 +95,7 @@ export function InterestRateModifier({
               void form.handleSubmit(handleSubmit)(e);
             }}>
             <div className='space-y-4 py-4'>
+              {submitError && <InlineError message={submitError} />}
               <div className='text-muted-foreground text-sm'>Current Interest Rate: {currentRate}% p.a.</div>
 
               <FormField
@@ -126,7 +130,7 @@ export function InterestRateModifier({
                           <SelectValue placeholder='Select scope' />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position='popper'>
                         <SelectItem value='all'>All Remaining EMIs</SelectItem>
                         <SelectItem value='selected' disabled={selectedEMIs.length === 0}>
                           Selected EMIs ({selectedEMIs.length})

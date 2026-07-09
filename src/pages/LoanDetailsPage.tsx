@@ -1,41 +1,34 @@
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
-import { Calendar, Download, PencilIcon, Percent, RefreshCwIcon, TrendingUp, Wallet } from 'lucide-react';
+import { Calendar, PencilIcon, Percent, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { EMISchedule } from '@/components/emi/EMISchedule';
 import { InterestRateModifier } from '@/components/InterestRate/InterestRateModifier';
+import { DeleteLoanDialog } from '@/components/loan/DeleteLoanDialog';
 import { PrePaymentDialog } from '@/components/payment/PrePaymentDialog';
 import { StepUpDialog } from '@/components/payment/StepUpDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineError } from '@/components/ui/inline-error';
+import { PageLoader } from '@/components/ui/page-loader';
+import { EMIScheduleProvider, useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanContext } from '@/contexts/LoanContext';
-import { useEMISchedule } from '@/hooks/useEMISchedule';
-import { formatCurrency } from '@/lib/calculations';
+import { formatCurrency, getCurrentOutstanding, getLoanComponents, getTotalPrincipal } from '@/lib/calculations';
 
-export function LoanDetailsPage(): JSX.Element {
-  const { id } = useParams<{ id: string }>();
+function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
   const navigate = useNavigate();
   const { loans } = useLoanContext();
+  const { schedule, loading, error } = useEMISchedule();
 
   const [showPrepayment, setShowPrepayment] = useState(false);
   const [showStepUp, setShowStepUp] = useState(false);
   const [showInterestChange, setShowInterestChange] = useState(false);
-  const [selectedEMIs, setSelectedEMIs] = useState<number[]>([]);
-  const [canExport, setCanExport] = useState(false);
-  const [canRegenerate, setCanRegenerate] = useState(false);
-  const regenerateScheduleRef = useRef<(() => Promise<void>) | null>(null);
-  const exportCSVRef = useRef<(() => void) | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
 
-  const loan = loans.loans.find((l) => l.id === id);
-  const { schedule } = useEMISchedule(id || null);
-
+  const loan = loans.loans.find((item) => item.id === loanId);
   const maxEMINumber = schedule.length > 0 ? schedule[schedule.length - 1].emiNumber : 0;
-
-  // Calculate loan statistics
-  const totalOutstanding =
-    schedule.length > 0 ? schedule[schedule.length - 1].outstandingPrincipal : loan?.principal || 0;
-  const totalInterest = schedule.reduce((sum, emi) => sum + emi.interest, 0);
 
   useEffect(() => {
     if (!loans.loading && !loan) {
@@ -43,138 +36,117 @@ export function LoanDetailsPage(): JSX.Element {
     }
   }, [loans.loading, loan, navigate]);
 
-  if (loans.loading || !loan || !id) {
-    return (
-      <div className='flex items-center justify-center py-16'>
-        <div className='text-center'>
-          <div className='border-primary mb-4 inline-block h-8 w-8 animate-spin rounded-full border-b-2'></div>
-          <p className='text-muted-foreground'>Loading...</p>
-        </div>
-      </div>
-    );
+  if (loans.loading || !loan) {
+    return <PageLoader />;
   }
+
+  if (loading) {
+    return <PageLoader message='Loading EMI schedule...' />;
+  }
+
+  if (error) {
+    return <InlineError message={error.message} />;
+  }
+
+  const selectedEMIs = schedule
+    .filter((emi) => selectedEntryIds.includes(emi.id) && !emi.isAdjustment)
+    .map((emi) => emi.emiNumber);
+
+  const totalLoanPrincipal = getTotalPrincipal(loan);
+  const loanComponents = getLoanComponents(loan);
+  const hasInsurance = (loan.insuranceAmount ?? 0) > 0;
+  const totalOutstanding = getCurrentOutstanding(schedule, totalLoanPrincipal);
+  const totalInterest = schedule.reduce((sum, emi) => sum + emi.interest, 0);
 
   return (
     <div className='space-y-8'>
-      {/* Dashboard Header */}
       <div className='flex items-start justify-between'>
         <div>
           <h1 className='mb-2 text-3xl font-semibold tracking-tight'>{loan.name}</h1>
           <p className='text-muted-foreground text-sm uppercase'>{loan.type} Loan</p>
         </div>
-        <div className='hidden items-center justify-between gap-2 md:flex'>
+        <div className='flex shrink-0 items-center gap-2'>
           <Button
-            variant='outline'
+            className='hidden md:inline-flex'
             onClick={() => {
-              void regenerateScheduleRef.current?.();
-            }}
-            disabled={!canRegenerate}>
-            <RefreshCwIcon className='mr-2 h-4 w-4' />
-            Regenerate
-          </Button>
-          <Button
-            variant='outline'
-            onClick={() => {
-              exportCSVRef.current?.();
-            }}
-            disabled={!canExport}>
-            <Download className='mr-2 h-4 w-4' />
-            Export CSV
-          </Button>
-          <Button
-            onClick={() => {
-              void navigate(`/loans/${id}/edit`);
+              void navigate(`/loans/${loanId}/edit`);
             }}>
             <PencilIcon className='mr-2 h-4 w-4' />
             Edit Loan
           </Button>
-        </div>
-      </div>
-
-      {/* My Balances Section */}
-      <div className='space-y-4'>
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
-          <Card className='border-2'>
-            <CardHeader className='pb-3'>
-              <div className='mb-2 flex items-center gap-2'>
-                <div className='rounded-lg bg-orange-100 p-2 dark:bg-orange-900/20'>
-                  <Wallet className='h-5 w-5 text-orange-600 dark:text-orange-400' />
-                </div>
-                <CardDescription className='text-xs'>Principal Amount</CardDescription>
-              </div>
-              <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.principal)}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className='border-2'>
-            <CardHeader className='pb-3'>
-              <div className='mb-2 flex items-center gap-2'>
-                <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
-                  <TrendingUp className='h-5 w-5 text-purple-600 dark:text-purple-400' />
-                </div>
-                <CardDescription className='text-xs'>Outstanding</CardDescription>
-              </div>
-              <CardTitle className='text-2xl font-bold'>{formatCurrency(totalOutstanding)}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className='border-2'>
-            <CardHeader className='pb-3'>
-              <div className='mb-2 flex items-center gap-2'>
-                <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
-                  <Percent className='h-5 w-5 text-blue-600 dark:text-blue-400' />
-                </div>
-                <CardDescription className='text-xs'>EMI Amount</CardDescription>
-              </div>
-              <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.emiAmount)}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className='border-2'>
-            <CardHeader className='pb-3'>
-              <div className='mb-2 flex items-center gap-2'>
-                <div className='rounded-lg bg-teal-100 p-2 dark:bg-teal-900/20'>
-                  <Calendar className='h-5 w-5 text-teal-600 dark:text-teal-400' />
-                </div>
-                <CardDescription className='text-xs'>Total Interest</CardDescription>
-              </div>
-              <CardTitle className='text-2xl font-bold'>{formatCurrency(totalInterest)}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      </div>
-
-      {/* Transactions Section */}
-      <div className='space-y-4'>
-        <div className='flex items-center justify-between'>
-          <h2 className='text-xl font-semibold'>Transactions</h2>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-9'
-            onClick={() => {
-              exportCSVRef.current?.();
-            }}
-            disabled={!canExport}>
-            <Download className='mr-2 h-4 w-4' />
-            Export
+          <Button variant='destructive-outline' size='sm' onClick={() => setShowDelete(true)}>
+            <Trash2 className='size-4' />
+            <span className='hidden sm:inline'>Delete</span>
           </Button>
         </div>
-
-        <EMISchedule
-          loanId={loan.id}
-          onPrepayment={() => setShowPrepayment(true)}
-          onStepUp={() => setShowStepUp(true)}
-          onInterestChange={() => setShowInterestChange(true)}
-          onSelectedEMIsChange={setSelectedEMIs}
-          selectedEMIs={selectedEMIs}
-          onRegenerateReady={(fn) => {
-            regenerateScheduleRef.current = fn;
-            setCanRegenerate(!!fn);
-          }}
-          onExportReady={(fn) => {
-            exportCSVRef.current = fn;
-            setCanExport(!!fn);
-          }}
-        />
       </div>
+
+      <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
+        <Card className='border-2'>
+          <CardHeader className='pb-3'>
+            <div className='mb-2 flex items-center gap-2'>
+              <div className='rounded-lg bg-orange-100 p-2 dark:bg-orange-900/20'>
+                <Wallet className='h-5 w-5 text-orange-600 dark:text-orange-400' />
+              </div>
+              <CardDescription className='text-xs'>Principal Amount</CardDescription>
+            </div>
+            <CardTitle className='text-2xl font-bold'>{formatCurrency(totalLoanPrincipal)}</CardTitle>
+            {hasInsurance && (
+              <CardDescription className='text-xs'>
+                Principal {formatCurrency(loan.principal)} + Insurance {formatCurrency(loan.insuranceAmount ?? 0)}
+              </CardDescription>
+            )}
+          </CardHeader>
+        </Card>
+        <Card className='border-2'>
+          <CardHeader className='pb-3'>
+            <div className='mb-2 flex items-center gap-2'>
+              <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
+                <TrendingUp className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+              </div>
+              <CardDescription className='text-xs'>Outstanding</CardDescription>
+            </div>
+            <CardTitle className='text-2xl font-bold'>{formatCurrency(totalOutstanding)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className='border-2'>
+          <CardHeader className='pb-3'>
+            <div className='mb-2 flex items-center gap-2'>
+              <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
+                <Percent className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+              </div>
+              <CardDescription className='text-xs'>EMI Amount</CardDescription>
+            </div>
+            <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.emiAmount)}</CardTitle>
+            {hasInsurance && (
+              <CardDescription className='text-xs'>
+                Principal {formatCurrency(Math.round(loanComponents[0].emiAmount))} + Insurance{' '}
+                {formatCurrency(Math.round(loanComponents[1]?.emiAmount ?? 0))}
+              </CardDescription>
+            )}
+          </CardHeader>
+        </Card>
+        <Card className='border-2'>
+          <CardHeader className='pb-3'>
+            <div className='mb-2 flex items-center gap-2'>
+              <div className='rounded-lg bg-teal-100 p-2 dark:bg-teal-900/20'>
+                <Calendar className='h-5 w-5 text-teal-600 dark:text-teal-400' />
+              </div>
+              <CardDescription className='text-xs'>Total Interest</CardDescription>
+            </div>
+            <CardTitle className='text-2xl font-bold'>{formatCurrency(totalInterest)}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <EMISchedule
+        loanId={loan.id}
+        onPrepayment={() => setShowPrepayment(true)}
+        onStepUp={() => setShowStepUp(true)}
+        onInterestChange={() => setShowInterestChange(true)}
+        onSelectedEntryIdsChange={setSelectedEntryIds}
+        selectedEntryIds={selectedEntryIds}
+      />
 
       <PrePaymentDialog
         open={showPrepayment}
@@ -200,9 +172,32 @@ export function LoanDetailsPage(): JSX.Element {
         selectedEMIs={selectedEMIs}
         onSuccess={() => {
           setShowInterestChange(false);
-          setSelectedEMIs([]);
+          setSelectedEntryIds([]);
+        }}
+      />
+
+      <DeleteLoanDialog
+        loan={loan}
+        open={showDelete}
+        onOpenChange={setShowDelete}
+        onDeleted={() => {
+          void navigate('/');
         }}
       />
     </div>
+  );
+}
+
+export function LoanDetailsPage(): JSX.Element {
+  const { id } = useParams<{ id: string }>();
+
+  if (!id) {
+    return <InlineError message='Loan not found' />;
+  }
+
+  return (
+    <EMIScheduleProvider loanId={id}>
+      <LoanDetailsContent loanId={id} />
+    </EMIScheduleProvider>
   );
 }

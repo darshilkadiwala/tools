@@ -1,8 +1,10 @@
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import { CalculatorIcon, Car, FileText, GraduationCap, Home, Plus, Wallet } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { DeleteLoanDialog } from '@/components/loan/DeleteLoanDialog';
+import { LoanSidebarMenuItem } from '@/components/loan/LoanSidebarMenuItem';
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +18,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useLoanContext } from '@/contexts/LoanContext';
-import { cn } from '@/lib/utils';
 
 import type { Loan, LoanType } from '@/types';
 
@@ -59,15 +60,23 @@ export function AppSidebar(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [loanToDelete, setLoanToDelete] = useState<Loan | null>(null);
 
   const groupedLoans = groupLoansByType(loans.loans);
 
-  // Handle navigation and close sidebar on mobile
   const handleNavigation = (path: string): void => {
     void navigate(path);
     if (isMobile) {
       setOpenMobile(false);
     }
+  };
+
+  const handleDeleted = (): void => {
+    if (loanToDelete && location.pathname.startsWith(`/loans/${loanToDelete.id}`)) {
+      handleNavigation('/');
+      return;
+    }
+    setLoanToDelete(null);
   };
 
   return (
@@ -97,7 +106,7 @@ export function AppSidebar(): JSX.Element {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={() => handleNavigation('/loans/create')} className='w-full justify-start'>
-                  <Plus className='h-4 w-4' />
+                  <Plus className='size-4' />
                   <span>New Loan</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -117,16 +126,19 @@ export function AppSidebar(): JSX.Element {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {typeLoans.map((loan) => {
-                    const isActive = location.pathname === `/loans/${loan.id}`;
+                    const isActive =
+                      location.pathname === `/loans/${loan.id}` || location.pathname === `/loans/${loan.id}/edit`;
+
                     return (
-                      <SidebarMenuItem key={loan.id}>
-                        <SidebarMenuButton
-                          onClick={() => handleNavigation(`/loans/${loan.id}`)}
-                          className={cn('w-full justify-start', isActive && 'bg-accent text-accent-foreground')}>
-                          <Icon className='h-4 w-4' />
-                          <span className='truncate'>{loan.name}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <LoanSidebarMenuItem
+                        key={loan.id}
+                        loan={loan}
+                        icon={Icon}
+                        isActive={isActive}
+                        onView={(loanId) => handleNavigation(`/loans/${loanId}`)}
+                        onEdit={(loanId) => handleNavigation(`/loans/${loanId}/edit`)}
+                        onDelete={setLoanToDelete}
+                      />
                     );
                   })}
                 </SidebarMenu>
@@ -135,6 +147,19 @@ export function AppSidebar(): JSX.Element {
           );
         })}
       </SidebarContent>
+
+      {loanToDelete ? (
+        <DeleteLoanDialog
+          loan={loanToDelete}
+          open={loanToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setLoanToDelete(null);
+            }
+          }}
+          onDeleted={handleDeleted}
+        />
+      ) : null}
     </Sidebar>
   );
 }

@@ -1,12 +1,16 @@
 import { useCallback } from 'react';
 
-import { applyStepUp as applyStepUpCalculation, recalculateAfterPrepayment } from '@/lib/calculations';
+import { useLoanContext } from '@/contexts/LoanContext';
+import {
+  applyStepUp as applyStepUpCalculation,
+  recalculateAfterPrepayment,
+  recalculateInterestRate,
+} from '@/lib/calculations';
 import { db } from '@/lib/db';
+import { addModification, bulkUpdateEMISchedules } from '@/lib/db-operations';
 import { dateToISO, generateUUID } from '@/lib/utils';
 
 import type { EMIScheduleEntry, Loan, LoanModification } from '@/types';
-
-import { useLoans } from './useLoans';
 
 export function useLoanOperations(): {
   applyPrepayment: (
@@ -27,200 +31,111 @@ export function useLoanOperations(): {
     affectedEMINumbers: number[] | 'all',
   ) => Promise<{ updatedSchedule: EMIScheduleEntry[] }>;
 } {
-  const { updateLoan, refreshLoans } = useLoans();
+  const { loans } = useLoanContext();
+  const { updateLoan } = loans;
 
   const applyPrepayment = useCallback(
     async (loanId: string, prepaymentAmount: number, prepaymentEMINumber: number, reduceTenure: boolean = false) => {
-      try {
-        const loan = await db.loans.get(loanId);
-        if (!loan) {
-          throw new Error('Loan not found');
-        }
-
-        const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
-
-        const { updatedLoan, updatedSchedule } = recalculateAfterPrepayment(
-          loan,
-          prepaymentAmount,
-          prepaymentEMINumber,
-          existingSchedule,
-          reduceTenure,
-        );
-
-        // Update loan
-        await updateLoan(loanId, updatedLoan);
-
-        // Update EMI schedules
-        for (const emi of updatedSchedule) {
-          await db.emiSchedules.update(emi.id, emi);
-        }
-
-        // Record modification
-        const modification: LoanModification = {
-          id: generateUUID(),
-          loanId,
-          type: 'prepayment',
-          date: dateToISO(new Date()),
-          amount: prepaymentAmount,
-          affectedEMIs: [prepaymentEMINumber],
-        };
-        await db.modifications.add(modification);
-
-        await refreshLoans();
-        return { updatedLoan, updatedSchedule };
-      } catch (err) {
-        throw err instanceof Error ? err : new Error('Failed to apply prepayment');
+      const loan = await db.loans.get(loanId);
+      if (!loan) {
+        throw new Error('Loan not found');
       }
+
+      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const { updatedLoan, updatedSchedule } = recalculateAfterPrepayment(
+        loan,
+        prepaymentAmount,
+        prepaymentEMINumber,
+        existingSchedule,
+        reduceTenure,
+      );
+
+      await updateLoan(loanId, updatedLoan);
+      await bulkUpdateEMISchedules(updatedSchedule);
+
+      const modification: LoanModification = {
+        id: generateUUID(),
+        loanId,
+        type: 'prepayment',
+        date: dateToISO(new Date()),
+        amount: prepaymentAmount,
+        affectedEMIs: [prepaymentEMINumber],
+      };
+      await addModification(modification);
+
+      return { updatedLoan, updatedSchedule };
     },
-    [updateLoan, refreshLoans],
+    [updateLoan],
   );
 
   const applyStepUp = useCallback(
     async (loanId: string, stepUpAmount: number | null, stepUpPercentage: number | null, fromEMINumber: number) => {
-      try {
-        const loan = await db.loans.get(loanId);
-        if (!loan) {
-          throw new Error('Loan not found');
-        }
-
-        const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
-
-        const { updatedLoan, updatedSchedule } = applyStepUpCalculation(
-          loan,
-          stepUpAmount,
-          stepUpPercentage,
-          fromEMINumber,
-          existingSchedule,
-        );
-
-        // Update loan
-        await updateLoan(loanId, updatedLoan);
-
-        // Update EMI schedules
-        for (const emi of updatedSchedule) {
-          await db.emiSchedules.update(emi.id, emi);
-        }
-
-        // Record modification
-        const affectedEMIs = existingSchedule
-          .filter((emi) => emi.emiNumber >= fromEMINumber && emi.status === 'pending')
-          .map((emi) => emi.emiNumber);
-
-        const modification: LoanModification = {
-          id: generateUUID(),
-          loanId,
-          type: 'stepup',
-          date: dateToISO(new Date()),
-          amount: stepUpAmount || undefined,
-          percentage: stepUpPercentage || undefined,
-          affectedEMIs,
-        };
-        await db.modifications.add(modification);
-
-        await refreshLoans();
-        return { updatedLoan, updatedSchedule };
-      } catch (err) {
-        throw err instanceof Error ? err : new Error('Failed to apply step-up');
+      const loan = await db.loans.get(loanId);
+      if (!loan) {
+        throw new Error('Loan not found');
       }
+
+      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const { updatedLoan, updatedSchedule } = applyStepUpCalculation(
+        loan,
+        stepUpAmount,
+        stepUpPercentage,
+        fromEMINumber,
+        existingSchedule,
+      );
+
+      await updateLoan(loanId, updatedLoan);
+      await bulkUpdateEMISchedules(updatedSchedule);
+
+      const affectedEMIs = existingSchedule
+        .filter((emi) => emi.emiNumber >= fromEMINumber && emi.status === 'pending')
+        .map((emi) => emi.emiNumber);
+
+      const modification: LoanModification = {
+        id: generateUUID(),
+        loanId,
+        type: 'stepup',
+        date: dateToISO(new Date()),
+        amount: stepUpAmount || undefined,
+        percentage: stepUpPercentage || undefined,
+        affectedEMIs,
+      };
+      await addModification(modification);
+
+      return { updatedLoan, updatedSchedule };
     },
-    [updateLoan, refreshLoans],
+    [updateLoan],
   );
 
   const changeInterestRate = useCallback(
     async (loanId: string, newInterestRate: number, affectedEMINumbers: number[] | 'all') => {
-      try {
-        const loan = await db.loans.get(loanId);
-        if (!loan) {
-          throw new Error('Loan not found');
-        }
-
-        const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
-
-        let affectedEMIs: number[];
-        if (affectedEMINumbers === 'all') {
-          affectedEMIs = existingSchedule.filter((emi) => emi.status === 'pending').map((emi) => emi.emiNumber);
-        } else {
-          affectedEMIs = affectedEMINumbers;
-        }
-
-        // Update affected EMIs
-        const updatedSchedule = existingSchedule.map((emi) => {
-          if (affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending') {
-            const monthlyRate = newInterestRate / 100 / 12;
-            const interest = Math.round(emi.outstandingPrincipal * monthlyRate * 100) / 100;
-            const principal = Math.round((loan.emiAmount - interest) * 100) / 100;
-            const actualPrincipal = Math.min(principal, emi.outstandingPrincipal);
-            const actualTotal = actualPrincipal + interest;
-
-            // Recalculate outstanding for subsequent EMIs
-            const currentOutstanding = emi.outstandingPrincipal - actualPrincipal;
-
-            return {
-              ...emi,
-              interest,
-              principal: actualPrincipal,
-              total: actualTotal,
-              outstandingPrincipal: Math.max(0, currentOutstanding),
-              modifiedInterestRate: newInterestRate,
-            };
-          }
-          return emi;
-        });
-
-        // Recalculate subsequent EMIs
-        for (let i = 0; i < updatedSchedule.length; i++) {
-          const emi = updatedSchedule[i];
-          if (affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending') {
-            let currentOutstanding = emi.outstandingPrincipal;
-
-            for (let j = i + 1; j < updatedSchedule.length; j++) {
-              const nextEMI = updatedSchedule[j];
-              if (nextEMI.status === 'pending') {
-                const monthlyRate = newInterestRate / 100 / 12;
-                const interest = Math.round(currentOutstanding * monthlyRate * 100) / 100;
-                const principal = Math.round((loan.emiAmount - interest) * 100) / 100;
-                const actualPrincipal = Math.min(principal, currentOutstanding);
-                const actualTotal = actualPrincipal + interest;
-
-                currentOutstanding = Math.round((currentOutstanding - actualPrincipal) * 100) / 100;
-
-                updatedSchedule[j] = {
-                  ...nextEMI,
-                  interest,
-                  principal: actualPrincipal,
-                  total: actualTotal,
-                  outstandingPrincipal: Math.max(0, currentOutstanding),
-                  modifiedInterestRate: newInterestRate,
-                };
-              }
-            }
-            break;
-          }
-        }
-
-        // Update EMI schedules in database
-        for (const emi of updatedSchedule) {
-          await db.emiSchedules.update(emi.id, emi);
-        }
-
-        // Record modification
-        const modification: LoanModification = {
-          id: generateUUID(),
-          loanId,
-          type: 'interest_change',
-          date: dateToISO(new Date()),
-          newInterestRate,
-          affectedEMIs,
-        };
-        await db.modifications.add(modification);
-
-        await refreshLoans();
-        return { updatedSchedule };
-      } catch (err) {
-        throw err instanceof Error ? err : new Error('Failed to change interest rate');
+      const loan = await db.loans.get(loanId);
+      if (!loan) {
+        throw new Error('Loan not found');
       }
+
+      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const affectedEMIs =
+        affectedEMINumbers === 'all'
+          ? existingSchedule.filter((emi) => emi.status === 'pending').map((emi) => emi.emiNumber)
+          : affectedEMINumbers;
+
+      const updatedSchedule = recalculateInterestRate(loan, newInterestRate, affectedEMIs, existingSchedule);
+      await bulkUpdateEMISchedules(updatedSchedule);
+
+      const modification: LoanModification = {
+        id: generateUUID(),
+        loanId,
+        type: 'interest_change',
+        date: dateToISO(new Date()),
+        newInterestRate,
+        affectedEMIs,
+      };
+      await addModification(modification);
+
+      return { updatedSchedule };
     },
-    [refreshLoans],
+    [],
   );
 
   return {
