@@ -12,7 +12,8 @@
     "lint:types": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postinstall": "pnpm format"
   },
   "dependencies": {
     "@fontsource-variable/roboto-slab": "5.2.8",
