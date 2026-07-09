@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { TailwindIndicator } from '@/components/ui/tailwind-indicator';
+import { ThemeSelector } from '@/components/ui/theme-selector';
 import { useLoanContext } from '@/contexts/LoanContext';
 import { cn } from '@/lib/utils';
 
@@ -84,10 +86,14 @@ export function Layout(): JSX.Element {
               ))}
             </BreadcrumbList>
           </Breadcrumb>
+          <div className='ms-auto flex items-center'>
+            <ThemeSelector />
+          </div>
         </header>
         <div className='container mx-auto max-w-7xl flex-1 p-4 md:p-6 lg:p-8'>
           <Outlet />
         </div>
+        <TailwindIndicator />
       </SidebarInset>
     </SidebarProvider>
   );
