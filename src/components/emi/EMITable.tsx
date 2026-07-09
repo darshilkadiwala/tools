@@ -6,51 +6,50 @@ import { AlertCircle, CheckCircle2, Clock, Edit } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/calculations';
-import { isoToDate } from '@/lib/utils';
+import { cn, isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry } from '@/types';
 
 interface EMITableProps {
   schedule: EMIScheduleEntry[];
-  onSelectEMI?: (emiNumbers: number[]) => void;
-  selectedEMIs?: number[];
-  showActions?: boolean;
+  onSelectionChange?: (entryIds: string[]) => void;
+  selectedEntryIds?: string[];
+  embedded?: boolean;
 }
 
 export function EMITable({
   schedule,
-  onSelectEMI,
-  selectedEMIs = [],
-  showActions = false,
+  onSelectionChange,
+  selectedEntryIds = [],
+  embedded = false,
 }: EMITableProps): JSX.Element {
-  const handleRowClick = (emiNumber: number): void => {
-    if (!onSelectEMI) return;
+  const showSelection = !!onSelectionChange;
 
-    if (selectedEMIs.includes(emiNumber)) {
-      onSelectEMI(selectedEMIs.filter((n) => n !== emiNumber));
+  const handleRowClick = (entryId: string): void => {
+    if (!onSelectionChange) return;
+
+    if (selectedEntryIds.includes(entryId)) {
+      onSelectionChange(selectedEntryIds.filter((id) => id !== entryId));
     } else {
-      onSelectEMI([...selectedEMIs, emiNumber]);
+      onSelectionChange([...selectedEntryIds, entryId]);
     }
   };
 
   const handleSelectAll = (checked: boolean): void => {
-    if (!onSelectEMI) return;
+    if (!onSelectionChange) return;
+
+    const pageIds = schedule.map((emi) => emi.id);
 
     if (checked) {
-      // Select all EMI numbers (excluding adjustments)
-      const allEMINumbers = schedule.filter((emi) => !emi.isAdjustment).map((emi) => emi.emiNumber);
-      onSelectEMI(allEMINumbers);
+      onSelectionChange([...new Set([...selectedEntryIds, ...pageIds])]);
     } else {
-      // Deselect all
-      onSelectEMI([]);
+      onSelectionChange(selectedEntryIds.filter((id) => !pageIds.includes(id)));
     }
   };
 
-  const selectableEMIs = schedule.filter((emi) => !emi.isAdjustment);
-  const allSelected = selectableEMIs.length > 0 && selectableEMIs.every((emi) => selectedEMIs.includes(emi.emiNumber));
+  const allSelected = schedule.length > 0 && schedule.every((emi) => selectedEntryIds.includes(emi.id));
 
-  const someSelected =
-    selectableEMIs.length > 0 && selectableEMIs.some((emi) => selectedEMIs.includes(emi.emiNumber)) && !allSelected;
+  const someSelected = schedule.length > 0 && schedule.some((emi) => selectedEntryIds.includes(emi.id)) && !allSelected;
 
   const getStatusIcon = (status: EMIScheduleEntry['status']): JSX.Element => {
     switch (status) {
@@ -68,11 +67,11 @@ export function EMITable({
   };
 
   return (
-    <div className='overflow-x-auto rounded-md border'>
+    <div className={cn('overflow-x-auto', embedded ? 'border-t' : 'rounded-md border')}>
       <Table>
         <TableHeader>
           <TableRow>
-            {showActions && (
+            {showSelection && (
               <TableHead className='w-12'>
                 <Checkbox
                   checked={someSelected ? 'indeterminate' : allSelected}
@@ -97,7 +96,7 @@ export function EMITable({
         <TableBody>
           {schedule.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showActions ? 9 : 8} className='text-muted-foreground py-8 text-center'>
+              <TableCell colSpan={showSelection ? 9 : 8} className='text-muted-foreground py-8 text-center'>
                 No EMI schedule available
               </TableCell>
             </TableRow>
@@ -105,25 +104,30 @@ export function EMITable({
             schedule.map((emi) => (
               <TableRow
                 key={emi.id}
-                onClick={() => !emi.isAdjustment && handleRowClick(emi.emiNumber)}
-                className={`cursor-pointer ${selectedEMIs.includes(emi.emiNumber) ? 'bg-muted' : ''} ${emi.isAdjustment ? 'opacity-75' : ''}`}>
-                {showActions && (
+                onClick={() => handleRowClick(emi.id)}
+                className={`${showSelection ? 'cursor-pointer' : ''} ${selectedEntryIds.includes(emi.id) ? 'bg-muted' : ''}`}>
+                {showSelection && (
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    {emi.isAdjustment ? (
-                      <div className='w-4' />
-                    ) : (
-                      <Checkbox
-                        checked={selectedEMIs.includes(emi.emiNumber)}
-                        onCheckedChange={() => handleRowClick(emi.emiNumber)}
-                        aria-label={`Select EMI ${emi.emiNumber}`}
-                      />
-                    )}
+                    <Checkbox
+                      checked={selectedEntryIds.includes(emi.id)}
+                      onCheckedChange={() => handleRowClick(emi.id)}
+                      aria-label={emi.isAdjustment ? 'Select adjustment row' : `Select EMI ${emi.emiNumber}`}
+                    />
                   </TableCell>
                 )}
                 <TableCell className='font-medium'>{emi.isAdjustment ? 'Adjustment' : emi.emiNumber}</TableCell>
                 <TableCell>{format(isoToDate(emi.dueDate), 'MMM dd, yyyy')}</TableCell>
                 <TableCell className='text-right'>{formatCurrency(emi.principal)}</TableCell>
-                <TableCell className='text-right'>{formatCurrency(emi.interest)}</TableCell>
+                <TableCell className='text-right'>
+                  {formatCurrency(emi.interest)}
+                  {emi.isAdjustment && emi.adjustmentComponents && emi.adjustmentComponents.length > 0 && (
+                    <p className='text-muted-foreground mt-1 text-xs font-normal'>
+                      {emi.adjustmentComponents
+                        .map((component) => `${component.label}: ${formatCurrency(component.interest)}`)
+                        .join(' · ')}
+                    </p>
+                  )}
+                </TableCell>
                 <TableCell className='text-right font-medium'>{formatCurrency(emi.total)}</TableCell>
                 <TableCell className='text-right'>{formatCurrency(emi.outstandingPrincipal)}</TableCell>
                 <TableCell>

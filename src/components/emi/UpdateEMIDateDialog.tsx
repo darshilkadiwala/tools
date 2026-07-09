@@ -15,9 +15,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
-import { useEMISchedule } from '@/hooks/useEMISchedule';
+import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { db } from '@/lib/db';
+import { bulkUpdateEMISchedules } from '@/lib/db-operations';
 import { dateToISO, dateToISODateString } from '@/lib/utils';
 
 const updateEMIDateSchema = z
@@ -48,8 +50,9 @@ export function UpdateEMIDateDialog({
   maxEMINumber,
   onSuccess,
 }: UpdateEMIDateDialogProps): JSX.Element {
-  const { refreshSchedule } = useEMISchedule(loanId);
+  const { refreshSchedule } = useEMISchedule();
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<UpdateEMIDateFormValues>({
     resolver: zodResolver(updateEMIDateSchema),
@@ -63,53 +66,30 @@ export function UpdateEMIDateDialog({
   const handleSubmit = async (data: UpdateEMIDateFormValues): Promise<void> => {
     try {
       setLoading(true);
+      setSubmitError(null);
 
-      // Get all EMIs for this loan
       const allEMIs = await db.emiSchedules.where('loanId').equals(loanId).sortBy('emiNumber');
-
-      // Get the EMI that will have the new start date
       const startEMI = allEMIs.find((emi) => emi.emiNumber === data.startEMINumber);
       if (!startEMI) {
         throw new Error(`EMI number ${data.startEMINumber} not found`);
       }
 
-      // Calculate the new start date
       const newStartDate = parse(data.newStartDate, 'yyyy-MM-dd', new Date());
+      const updatedEMIs = allEMIs
+        .filter((emi) => emi.emiNumber >= data.startEMINumber && emi.emiNumber <= data.endEMINumber)
+        .map((emi) => ({
+          ...emi,
+          dueDate: dateToISO(addMonths(newStartDate, emi.emiNumber - data.startEMINumber)),
+        }));
 
-      // Calculate the difference in months from the original start EMI date
-      const originalStartEMI = allEMIs.find((emi) => emi.emiNumber === data.startEMINumber);
-      if (!originalStartEMI) {
-        throw new Error('Could not find start EMI');
-      }
-
-      // Update all EMIs in the range
-      const updates: Array<{ id: string; dueDate: string }> = [];
-
-      for (let i = data.startEMINumber; i <= data.endEMINumber && i <= maxEMINumber; i++) {
-        const emi = allEMIs.find((e) => e.emiNumber === i);
-        if (emi) {
-          // Calculate the offset from the start EMI
-          const offset = i - data.startEMINumber;
-          const newDueDate = addMonths(newStartDate, offset);
-          updates.push({
-            id: emi.id,
-            dueDate: dateToISO(newDueDate),
-          });
-        }
-      }
-
-      // Update all EMIs in bulk
-      for (const update of updates) {
-        await db.emiSchedules.update(update.id, { dueDate: update.dueDate });
-      }
-
+      await bulkUpdateEMISchedules(updatedEMIs);
       await refreshSchedule();
       form.reset();
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error('Update EMI date failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update EMI dates');
+      setSubmitError(error instanceof Error ? error.message : 'Failed to update EMI dates');
     } finally {
       setLoading(false);
     }
@@ -131,6 +111,7 @@ export function UpdateEMIDateDialog({
               void form.handleSubmit(handleSubmit)(e);
             }}>
             <div className='space-y-4 py-4'>
+              {submitError && <InlineError message={submitError} />}
               <FormField
                 control={form.control}
                 name='startEMINumber'
