@@ -78,8 +78,13 @@ export function LoanCard({ loan, onView, onEdit, onDelete }: LoanCardProps): JSX
           <Button variant='outline' size='sm' onClick={() => onEdit(loan.id)} className='flex-1 @md:w-full'>
             Edit
           </Button>
-          <Button variant='ghost' size='icon' onClick={() => onDelete(loan.id)}>
-            <Trash2Icon />
+          <Button
+            variant='destructive-outline'
+            size='sm'
+            onClick={() => onDelete(loan.id)}
+            className='flex-1 @md:w-full'>
+            <Trash2Icon className='size-4' />
+            Delete
           </Button>
         </div>
       </CardContent>

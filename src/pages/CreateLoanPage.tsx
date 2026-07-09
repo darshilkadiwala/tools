@@ -3,7 +3,7 @@ import { useState, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { LoanForm } from '@/components/loan/LoanForm';
-import { Separator } from '@/components/ui/separator';
+import { LoanFormPage } from '@/components/loan/LoanFormPage';
 import { useLoanContext } from '@/contexts/LoanContext';
 
 import type { Loan } from '@/types';
@@ -25,23 +25,16 @@ export function CreateLoanPage(): JSX.Element {
   };
 
   return (
-    <>
-      {error && (
-        <div className='bg-destructive/10 border-destructive/20 text-destructive mb-6 rounded-lg border p-4 text-sm'>
-          {error}
-        </div>
-      )}
-
-      <h1 className='mb-2 text-3xl font-bold tracking-tight'>Create New Loan</h1>
-      <p className='text-muted-foreground text-base'>Fill in the details below to create a new loan account</p>
-      <Separator className='my-4' />
-
+    <LoanFormPage
+      title='Create new loan'
+      description='Set up your loan in three steps. We will calculate the EMI schedule once you save.'
+      error={error}>
       <LoanForm
         onSubmit={handleCreateLoan}
         onCancel={() => {
           void navigate('/');
         }}
       />
-    </>
+    </LoanFormPage>
   );
 }

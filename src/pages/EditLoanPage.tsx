@@ -1,8 +1,14 @@
 import { useEffect, useState, type JSX } from 'react';
 
+import { Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { DeleteLoanDialog } from '@/components/loan/DeleteLoanDialog';
 import { LoanForm } from '@/components/loan/LoanForm';
+import { LoanFormPage } from '@/components/loan/LoanFormPage';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageLoader } from '@/components/ui/page-loader';
 import { useLoanContext } from '@/contexts/LoanContext';
 
 import type { Loan } from '@/types';
@@ -12,6 +18,7 @@ export function EditLoanPage(): JSX.Element | null {
   const { loans } = useLoanContext();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
 
   const loan = loans.loans.find((l) => l.id === id);
 
@@ -22,14 +29,7 @@ export function EditLoanPage(): JSX.Element | null {
   }, [loans.loading, loan, navigate]);
 
   if (loans.loading) {
-    return (
-      <div className='flex items-center justify-center py-12'>
-        <div className='text-center'>
-          <div className='border-primary mb-4 inline-block h-8 w-8 animate-spin rounded-full border-b-2'></div>
-          <p className='text-muted-foreground'>Loading...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message='Loading loan…' />;
   }
 
   if (!loan) return null;
@@ -38,7 +38,7 @@ export function EditLoanPage(): JSX.Element | null {
     try {
       setError(null);
       await loans.updateLoan(loan.id, data);
-      void navigate('/');
+      void navigate(`/loans/${loan.id}`);
     } catch (error) {
       console.error('Failed to update loan:', error);
       setError(error instanceof Error ? error.message : 'Failed to update loan');
@@ -46,25 +46,45 @@ export function EditLoanPage(): JSX.Element | null {
   };
 
   return (
-    <div className='space-y-8'>
-      {error && (
-        <div className='bg-destructive/10 border-destructive/20 text-destructive rounded-lg border p-4 text-sm'>
-          {error}
-        </div>
-      )}
+    <LoanFormPage
+      title={`Edit ${loan.name}`}
+      description='Update loan details. The EMI schedule will be regenerated to reflect your changes.'
+      backHref={`/loans/${loan.id}`}
+      backLabel='Back to Loan Details'
+      error={error}>
+      <div className='space-y-8'>
+        <LoanForm
+          loan={loan}
+          onSubmit={handleUpdateLoan}
+          onCancel={() => {
+            void navigate(`/loans/${loan.id}`);
+          }}
+        />
 
-      <div className='space-y-2'>
-        <h1 className='text-3xl font-bold tracking-tight'>Edit Loan</h1>
-        <p className='text-muted-foreground text-base'>Update the loan details below</p>
+        <Card className='border-destructive/30'>
+          <CardHeader>
+            <CardTitle className='text-destructive text-base'>Danger zone</CardTitle>
+            <CardDescription>
+              Permanently delete this loan and all EMI schedule data. This cannot be undone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type='button' variant='destructive-outline' onClick={() => setShowDelete(true)}>
+              <Trash2 className='size-4' />
+              Delete loan
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
-      <LoanForm
+      <DeleteLoanDialog
         loan={loan}
-        onSubmit={handleUpdateLoan}
-        onCancel={() => {
+        open={showDelete}
+        onOpenChange={setShowDelete}
+        onDeleted={() => {
           void navigate('/');
         }}
       />
-    </div>
+    </LoanFormPage>
   );
 }

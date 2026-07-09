@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react';
 
-import { Plus, Search } from 'lucide-react';
+import { Plus, PlusIcon, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,8 +33,8 @@ export function LoanList({ loans, onView, onEdit, onDelete, onCreateNew }: LoanL
           <h1 className='text-3xl font-bold tracking-tight'>My Loans</h1>
           <p className='text-muted-foreground text-base'>Manage and track all your loan accounts in one place</p>
         </div>
-        <Button onClick={onCreateNew} className='h-11 w-full px-6 sm:w-auto'>
-          <Plus className='mr-2 h-4 w-4' />
+        <Button onClick={onCreateNew}>
+          <PlusIcon />
           New Loan
         </Button>
       </div>
