@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { generateEMISchedule } from '@/lib/calculations';
-import { db } from '@/lib/db';
-import { applyScheduleWithStatuses, bulkUpdateEMISchedules, replaceLoanSchedule } from '@/lib/db-operations';
+import {
+  applyScheduleWithStatuses,
+  bulkUpdateEMISchedules,
+  getLoanById,
+  getModificationsByLoanId,
+  getScheduleByLoanId,
+  markEMIAsPaid,
+  markEMIsAsPaidBulk,
+  replaceLoanSchedule,
+} from '@/lib/db';
 
 import type { EMIScheduleEntry } from '@/types';
 
@@ -30,20 +38,20 @@ export function useEMIScheduleState(loanId: string | null): EMIScheduleState {
 
     try {
       setLoading(true);
-      const emiSchedule = await db.emiSchedules.where('loanId').equals(loanId).sortBy('emiNumber');
+      const emiSchedule = await getScheduleByLoanId(loanId);
 
       if (emiSchedule.length === 0) {
-        const loan = await db.loans.get(loanId);
+        const loan = await getLoanById(loanId);
         if (!loan) {
           setSchedule([]);
           setError(null);
           return;
         }
 
-        const modifications = await db.modifications.where('loanId').equals(loanId).toArray();
+        const modifications = await getModificationsByLoanId(loanId);
         const newSchedule = generateEMISchedule(loan, modifications);
         await bulkUpdateEMISchedules(newSchedule);
-        const savedSchedule = await db.emiSchedules.where('loanId').equals(loanId).sortBy('emiNumber');
+        const savedSchedule = await getScheduleByLoanId(loanId);
         setSchedule(await applyScheduleWithStatuses(savedSchedule));
       } else {
         setSchedule(await applyScheduleWithStatuses(emiSchedule));
@@ -66,12 +74,12 @@ export function useEMIScheduleState(loanId: string | null): EMIScheduleState {
       return [];
     }
 
-    const loan = await db.loans.get(loanId);
+    const loan = await getLoanById(loanId);
     if (!loan) {
       throw new Error('Loan not found');
     }
 
-    const modifications = await db.modifications.where('loanId').equals(loanId).toArray();
+    const modifications = await getModificationsByLoanId(loanId);
     const newSchedule = generateEMISchedule(loan, modifications);
     await replaceLoanSchedule(loanId, newSchedule);
     await loadSchedule();
@@ -80,7 +88,7 @@ export function useEMIScheduleState(loanId: string | null): EMIScheduleState {
 
   const markAsPaid = useCallback(
     async (emiId: string): Promise<void> => {
-      await db.emiSchedules.update(emiId, { status: 'paid' });
+      await markEMIAsPaid(emiId);
       await loadSchedule();
     },
     [loadSchedule],
@@ -88,14 +96,7 @@ export function useEMIScheduleState(loanId: string | null): EMIScheduleState {
 
   const markAsPaidBulk = useCallback(
     async (emiIds: string[]): Promise<void> => {
-      const uniqueIds = [...new Set(emiIds)];
-      if (uniqueIds.length === 0) {
-        return;
-      }
-
-      await db.transaction('rw', db.emiSchedules, async () => {
-        await Promise.all(uniqueIds.map((id) => db.emiSchedules.update(id, { status: 'paid' })));
-      });
+      await markEMIsAsPaidBulk(emiIds);
       await loadSchedule();
     },
     [loadSchedule],
