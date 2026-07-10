@@ -4,12 +4,7 @@ import { Calculator, IndianRupee, Percent, Shield, Timer } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import {
-  calculateEMI,
-  calculateTenureFromFixedEMI,
-  formatCurrency,
-  getLoanComponents,
-} from '@/lib/calculations';
+import { calculateEMI, calculateTenureFromFixedEMI, formatCurrency, getLoanComponents } from '@/lib/calculations';
 import { cn } from '@/lib/utils';
 
 import type { EmiCalculationMode } from '@/types';

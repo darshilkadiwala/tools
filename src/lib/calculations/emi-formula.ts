@@ -1,6 +1,6 @@
 import { getNumberLocale } from '@/lib/locale';
 
-import type { Loan, InterestRoundingMode } from '@/types';
+import type { InterestRoundingMode, Loan } from '@/types';
 
 import type { LoanComponentBreakdown } from './types';
 

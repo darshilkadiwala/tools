@@ -5,16 +5,16 @@ import {
   calculateActual365Interest,
   calculateAdjustmentPreview,
   calculateEMI,
+  calculateMoratoriumMonthInterest,
   calculateTenureFromFixedEMI,
   calculateTotalLoanEMI,
   explainInterestVariance,
   generateEMISchedule,
   getCurrentOutstanding,
+  getEffectiveMoratoriumRate,
   getEMIStatus,
   getLoanComponents,
-  getEffectiveMoratoriumRate,
   getMoratoriumMonthCount,
-  calculateMoratoriumMonthInterest,
   hasMoratoriumPeriod,
   isShortPartialPeriodGap,
   needsAdjustmentPayment,
@@ -384,7 +384,14 @@ describe('moratorium rate changes', () => {
 
   it('splits monthly interest when rate changes mid-month', () => {
     const changes = [{ date: '2019-10-15T00:00:00.000Z', newInterestRate: 10.05 }];
-    const result = calculateMoratoriumMonthInterest(100_000, 10.55, changes, new Date('2019-10-01'), 'actual_365', 'round');
+    const result = calculateMoratoriumMonthInterest(
+      100_000,
+      10.55,
+      changes,
+      new Date('2019-10-01'),
+      'actual_365',
+      'round',
+    );
 
     expect(result.interest).toBeGreaterThan(0);
     expect(result.appliedRate).toBe(10.05);
