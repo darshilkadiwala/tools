@@ -17,9 +17,12 @@ import type {
   AdjustmentType,
   EMIScheduleEntry,
   EMIStatus,
+  EmiPostingOrder,
+  InterestAccrualMethod,
   InterestRoundingMode,
   Loan,
   LoanModification,
+  MoratoriumRateChange,
 } from '@/types';
 
 export interface AdjustmentAmounts {
@@ -81,6 +84,64 @@ export function calculateTotalLoanEMI(
     insuranceAmount && insuranceAmount > 0 ? calculateEMI(insuranceAmount, annualInterestRate, tenureMonths) : 0;
 
   return Math.round((homeEmi + insuranceEmi) * 100) / 100;
+}
+
+/** First-month interest on the total principal — minimum viable fixed EMI */
+export function calculateMinimumFixedEMI(
+  principal: number,
+  insuranceAmount: number | undefined,
+  annualInterestRate: number,
+): number {
+  const totalPrincipal = principal + (insuranceAmount ?? 0);
+  const monthlyRate = annualInterestRate / 100 / 12;
+  return Math.round(totalPrincipal * monthlyRate * 100) / 100;
+}
+
+/**
+ * Estimate how many months it takes to repay at a fixed EMI.
+ * Interest is calculated on the reducing balance; principal = EMI − interest.
+ */
+export function calculateTenureFromFixedEMI(
+  principal: number,
+  insuranceAmount: number | undefined,
+  annualInterestRate: number,
+  fixedEmi: number,
+  maxMonths: number = 600,
+): number {
+  const totalPrincipal = principal + (insuranceAmount ?? 0);
+  if (totalPrincipal <= 0 || fixedEmi <= 0) return 0;
+
+  const monthlyRate = annualInterestRate / 100 / 12;
+  let outstanding = totalPrincipal;
+  let months = 0;
+
+  while (outstanding > 0.01 && months < maxMonths) {
+    const interest = Math.round(outstanding * monthlyRate * 100) / 100;
+    if (fixedEmi <= interest) {
+      return maxMonths;
+    }
+    const principalPayment = Math.min(Math.round((fixedEmi - interest) * 100) / 100, outstanding);
+    outstanding = Math.round((outstanding - principalPayment) * 100) / 100;
+    months++;
+  }
+
+  return months;
+}
+
+export function resolveLoanEmiAmount(
+  loan: Pick<Loan, 'principal' | 'insuranceAmount' | 'interestRate' | 'tenureMonths' | 'emiCalculationMode'> & {
+    emiAmount?: number;
+  },
+  fixedEmiAmount?: number,
+): number {
+  if (loan.emiCalculationMode === 'fixed') {
+    const amount = fixedEmiAmount ?? loan.emiAmount;
+    if (amount !== undefined && amount > 0) {
+      return amount;
+    }
+  }
+
+  return calculateTotalLoanEMI(loan.principal, loan.insuranceAmount, loan.interestRate, loan.tenureMonths);
 }
 
 export function applyInterestRounding(amount: number, mode: InterestRoundingMode = 'round'): number {
@@ -145,12 +206,372 @@ export interface AdjustmentPreview extends AdjustmentAmounts {
 }
 
 export function needsAdjustmentPayment(startDate: string | Date, emiStartDate: string | Date): boolean {
+  return isShortPartialPeriodGap(startDate, emiStartDate);
+}
+
+/**
+ * True when the first EMI falls in the same month as disbursement (different day)
+ * or in the month immediately after — the classic broken-period case.
+ */
+export function isShortPartialPeriodGap(startDate: string | Date, emiStartDate: string | Date): boolean {
+  const loanStartDate = typeof startDate === 'string' ? isoToDate(startDate) : startDate;
+  const emiStart = typeof emiStartDate === 'string' ? isoToDate(emiStartDate) : emiStartDate;
+
+  if (isBefore(emiStart, loanStartDate)) {
+    return false;
+  }
+
+  const loanStartMonth = startOfMonth(loanStartDate);
+  const emiStartMonth = startOfMonth(emiStart);
+
+  if (loanStartMonth.getTime() === emiStartMonth.getTime()) {
+    return getDate(loanStartDate) !== getDate(emiStart);
+  }
+
+  const monthAfterDisbursement = startOfMonth(addMonths(loanStartMonth, 1));
+  return emiStartMonth.getTime() === monthAfterDisbursement.getTime();
+}
+
+/**
+ * True when there is a multi-month study/moratorium gap between disbursement and first EMI.
+ */
+export function hasMoratoriumPeriod(startDate: string | Date, emiStartDate: string | Date): boolean {
+  const loanStartDate = typeof startDate === 'string' ? isoToDate(startDate) : startDate;
+  const emiStart = typeof emiStartDate === 'string' ? isoToDate(emiStartDate) : emiStartDate;
+
+  if (isBefore(emiStart, loanStartDate)) {
+    return false;
+  }
+
+  if (loanStartDate.getTime() === emiStart.getTime()) {
+    return false;
+  }
+
+  return !isShortPartialPeriodGap(startDate, emiStartDate);
+}
+
+/** Count full calendar months in the moratorium (from disbursement month through month before first EMI). */
+export function getMoratoriumMonthCount(startDate: string | Date, emiStartDate: string | Date): number {
+  if (!hasMoratoriumPeriod(startDate, emiStartDate)) {
+    return 0;
+  }
+
   const loanStartDate = typeof startDate === 'string' ? isoToDate(startDate) : startDate;
   const emiStart = typeof emiStartDate === 'string' ? isoToDate(emiStartDate) : emiStartDate;
   const loanStartMonth = startOfMonth(loanStartDate);
   const emiStartMonth = startOfMonth(emiStart);
 
-  return loanStartMonth.getTime() !== emiStartMonth.getTime() || getDate(loanStartDate) !== getDate(emiStart);
+  let count = 0;
+  let cursor = loanStartMonth;
+  while (isBefore(cursor, emiStartMonth)) {
+    count++;
+    cursor = addMonths(cursor, 1);
+  }
+
+  return count;
+}
+
+export function resolveInterestAccrualMethod(loan: Pick<Loan, 'type' | 'interestAccrualMethod' | 'startDate' | 'emiStartDate'>): InterestAccrualMethod {
+  if (loan.interestAccrualMethod) {
+    return loan.interestAccrualMethod;
+  }
+  if (
+    loan.type === 'education' &&
+    loan.emiStartDate &&
+    hasMoratoriumPeriod(loan.startDate, loan.emiStartDate)
+  ) {
+    return 'actual_365';
+  }
+  return 'monthly_reducing';
+}
+
+export function resolveEmiPostingOrder(loan: Pick<Loan, 'type' | 'emiPostingOrder' | 'startDate' | 'emiStartDate'>): EmiPostingOrder {
+  if (loan.emiPostingOrder) {
+    return loan.emiPostingOrder;
+  }
+  if (loan.type === 'education') {
+    return 'emi_first';
+  }
+  return 'standard';
+}
+
+/** Days in a calendar month (inclusive). */
+function getDaysInMonth(date: Date): number {
+  return differenceInDays(endOfMonth(date), startOfMonth(date)) + 1;
+}
+
+function calculateMonthlyInterest(
+  outstanding: number,
+  annualRate: number,
+  monthDate: Date,
+  method: InterestAccrualMethod,
+  rounding: InterestRoundingMode,
+): number {
+  const days = getDaysInMonth(monthDate);
+  if (method === 'actual_365') {
+    return calculateActual365Interest(outstanding, annualRate, days, rounding);
+  }
+  return applyInterestRounding(outstanding * (annualRate / 100 / 12), rounding);
+}
+
+function calculateRepaymentComponents(
+  openingBalance: number,
+  emiAmount: number,
+  annualRate: number,
+  monthDate: Date,
+  postingOrder: EmiPostingOrder,
+  accrualMethod: InterestAccrualMethod,
+  rounding: InterestRoundingMode,
+): { principal: number; interest: number; total: number; closingBalance: number } {
+  if (openingBalance <= 0) {
+    return { principal: 0, interest: 0, total: 0, closingBalance: 0 };
+  }
+
+  const effectiveEmi = Math.min(emiAmount, openingBalance + emiAmount);
+
+  if (postingOrder === 'emi_first') {
+    const balanceAfterEmi = Math.max(0, Math.round((openingBalance - emiAmount) * 100) / 100);
+    const interest = calculateMonthlyInterest(balanceAfterEmi, annualRate, monthDate, accrualMethod, rounding);
+    const closingBalance = Math.round((balanceAfterEmi + interest) * 100) / 100;
+    const netPrincipal = Math.round((openingBalance - closingBalance) * 100) / 100;
+
+    return {
+      principal: Math.max(0, Math.min(netPrincipal, openingBalance)),
+      interest,
+      total: Math.min(emiAmount, openingBalance + interest),
+      closingBalance: Math.max(0, closingBalance),
+    };
+  }
+
+  const monthlyRate = annualRate / 100 / 12;
+  const interest =
+    accrualMethod === 'actual_365'
+      ? calculateMonthlyInterest(openingBalance, annualRate, monthDate, accrualMethod, rounding)
+      : Math.round(openingBalance * monthlyRate * 100) / 100;
+  const principal = Math.round((effectiveEmi - interest) * 100) / 100;
+  const actualPrincipal = Math.min(Math.max(0, principal), openingBalance);
+  const closingBalance = Math.round((openingBalance - actualPrincipal) * 100) / 100;
+
+  return {
+    principal: actualPrincipal,
+    interest,
+    total: actualPrincipal + interest,
+    closingBalance: Math.max(0, closingBalance),
+  };
+}
+
+/** Effective annual rate at a given date, applying moratorium rate changes chronologically. */
+export function getEffectiveMoratoriumRate(
+  date: Date,
+  baseRate: number,
+  rateChanges: MoratoriumRateChange[],
+): number {
+  let rate = baseRate;
+  const sorted = [...rateChanges].sort((a, b) => isoToDate(a.date).getTime() - isoToDate(b.date).getTime());
+
+  for (const change of sorted) {
+    const changeDate = startOfDay(isoToDate(change.date));
+    if (!isAfter(changeDate, startOfDay(date))) {
+      rate = change.newInterestRate;
+    }
+  }
+
+  return rate;
+}
+
+/** Monthly moratorium interest, splitting the month when a rate change occurs mid-period. */
+export function calculateMoratoriumMonthInterest(
+  outstanding: number,
+  baseRate: number,
+  rateChanges: MoratoriumRateChange[],
+  monthDate: Date,
+  accrualMethod: InterestAccrualMethod,
+  rounding: InterestRoundingMode,
+): { interest: number; appliedRate: number } {
+  if (outstanding <= 0) {
+    return { interest: 0, appliedRate: baseRate };
+  }
+
+  const monthStart = startOfMonth(monthDate);
+  const monthEnd = endOfMonth(monthDate);
+
+  const changesInMonth = [...rateChanges]
+    .filter((change) => {
+      const changeDate = isoToDate(change.date);
+      return !isBefore(changeDate, monthStart) && !isAfter(changeDate, monthEnd);
+    })
+    .sort((a, b) => isoToDate(a.date).getTime() - isoToDate(b.date).getTime());
+
+  if (changesInMonth.length === 0 || accrualMethod !== 'actual_365') {
+    const rate = getEffectiveMoratoriumRate(monthEnd, baseRate, rateChanges);
+    return {
+      interest: calculateMonthlyInterest(outstanding, rate, monthDate, accrualMethod, rounding),
+      appliedRate: rate,
+    };
+  }
+
+  let interest = 0;
+  let periodStart = monthStart;
+  let currentRate = getEffectiveMoratoriumRate(monthStart, baseRate, rateChanges);
+
+  for (const change of changesInMonth) {
+    const changeDate = isoToDate(change.date);
+    const daysBeforeChange = differenceInDays(changeDate, periodStart);
+    if (daysBeforeChange > 0) {
+      interest += calculateActual365Interest(outstanding, currentRate, daysBeforeChange, rounding);
+    }
+    periodStart = changeDate;
+    currentRate = change.newInterestRate;
+  }
+
+  const daysRemaining = differenceInDays(monthEnd, periodStart) + 1;
+  interest += calculateActual365Interest(outstanding, currentRate, daysRemaining, rounding);
+
+  return { interest, appliedRate: currentRate };
+}
+
+/** Part-period interest on a mid-month tranche from disbursement date through month-end. */
+function calculateTranchePartPeriodInterest(
+  amount: number,
+  disbDate: Date,
+  baseRate: number,
+  rateChanges: MoratoriumRateChange[],
+  rounding: InterestRoundingMode,
+): number {
+  const monthEnd = endOfMonth(disbDate);
+  const days = differenceInDays(monthEnd, disbDate) + 1;
+  const daysInMonth = getDaysInMonth(disbDate);
+
+  if (days <= 0 || days >= daysInMonth) {
+    return 0;
+  }
+
+  const rate = getEffectiveMoratoriumRate(disbDate, baseRate, rateChanges);
+  return calculateActual365Interest(amount, rate, days, rounding);
+}
+
+/**
+ * Generate interest-only moratorium entries with monthly capitalization (actual/365).
+ * Supports tranche disbursements and mid-moratorium rate changes.
+ */
+function generateMoratoriumSchedule(loan: Loan): { entries: EMIScheduleEntry[]; endOutstanding: number } {
+  const entries: EMIScheduleEntry[] = [];
+  const emiStart = isoToDate(loan.emiStartDate!);
+  const loanStartDate = isoToDate(loan.startDate);
+  const rounding = loan.interestRounding ?? 'round';
+  const accrualMethod = resolveInterestAccrualMethod(loan);
+  const rateChanges = loan.moratoriumRateChanges ?? [];
+
+  const sortedDisbursements = [...(loan.disbursements ?? [])].sort(
+    (a, b) => isoToDate(a.date).getTime() - isoToDate(b.date).getTime(),
+  );
+
+  const hasTranches = sortedDisbursements.length > 0;
+  let outstanding = hasTranches ? 0 : (loan.disbursedPrincipal ?? 0);
+
+  let cursor = startOfMonth(loanStartDate);
+  const emiStartMonth = startOfMonth(emiStart);
+  let moratoriumCounter = 1;
+  let appliedDisbursementCount = 0;
+
+  while (isBefore(cursor, emiStartMonth)) {
+    const monthStart = startOfMonth(cursor);
+    const monthEnd = endOfMonth(cursor);
+
+    const disbsThisMonth = sortedDisbursements.filter((disb) => {
+      const disbDate = isoToDate(disb.date);
+      return !isBefore(disbDate, monthStart) && !isAfter(disbDate, monthEnd);
+    });
+
+    const balanceBeforeDisbs = outstanding;
+
+    for (const disb of disbsThisMonth) {
+      const disbDate = isoToDate(disb.date);
+      outstanding = Math.round((outstanding + disb.amount) * 100) / 100;
+      appliedDisbursementCount++;
+
+      entries.push({
+        id: `${loan.id}-disb-${appliedDisbursementCount}`,
+        loanId: loan.id,
+        emiNumber: -(moratoriumCounter + 1000),
+        dueDate: dateToISO(disbDate),
+        principal: disb.amount,
+        interest: 0,
+        total: disb.amount,
+        outstandingPrincipal: outstanding,
+        status: getEMIStatus(disbDate),
+        isMoratorium: true,
+        isDisbursement: true,
+        disbursementLabel: disb.label,
+      });
+
+      if (getDate(disbDate) > 1) {
+        const partInterest = calculateTranchePartPeriodInterest(
+          disb.amount,
+          disbDate,
+          loan.interestRate,
+          rateChanges,
+          rounding,
+        );
+
+        if (partInterest > 0) {
+          outstanding = Math.round((outstanding + partInterest) * 100) / 100;
+          entries.push({
+            id: `${loan.id}-moratorium-${moratoriumCounter}`,
+            loanId: loan.id,
+            emiNumber: -moratoriumCounter,
+            dueDate: dateToISO(monthEnd),
+            principal: 0,
+            interest: partInterest,
+            total: partInterest,
+            outstandingPrincipal: outstanding,
+            status: getEMIStatus(monthEnd),
+            isMoratorium: true,
+            modifiedInterestRate: getEffectiveMoratoriumRate(disbDate, loan.interestRate, rateChanges),
+          });
+          moratoriumCounter++;
+        }
+      }
+    }
+
+    const hasMidMonthDisb = disbsThisMonth.some((disb) => getDate(isoToDate(disb.date)) > 1);
+    const interestBase = hasMidMonthDisb ? balanceBeforeDisbs : outstanding;
+
+    if (interestBase > 0) {
+      const { interest, appliedRate } = calculateMoratoriumMonthInterest(
+        interestBase,
+        loan.interestRate,
+        rateChanges,
+        cursor,
+        accrualMethod,
+        rounding,
+      );
+
+      if (interest > 0) {
+        outstanding = Math.round((outstanding + interest) * 100) / 100;
+        entries.push({
+          id: `${loan.id}-moratorium-${moratoriumCounter}`,
+          loanId: loan.id,
+          emiNumber: -moratoriumCounter,
+          dueDate: dateToISO(monthEnd),
+          principal: 0,
+          interest,
+          total: interest,
+          outstandingPrincipal: outstanding,
+          status: getEMIStatus(monthEnd),
+          isMoratorium: true,
+          modifiedInterestRate: appliedRate !== loan.interestRate ? appliedRate : undefined,
+        });
+        moratoriumCounter++;
+      }
+    }
+
+    cursor = addMonths(cursor, 1);
+  }
+
+  entries.sort((a, b) => isoToDate(a.dueDate).getTime() - isoToDate(b.dueDate).getTime());
+
+  return { entries, endOutstanding: outstanding };
 }
 
 function getPartialPeriodRatio(loanStartDate: Date): {
@@ -556,13 +977,21 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
 
   const emiStart = isoToDate(loan.emiStartDate || loan.startDate);
   const loanStartDate = isoToDate(loan.startDate);
-  const loanStartMonth = startOfMonth(loanStartDate);
   const emiStartMonth = startOfMonth(emiStart);
-  const needsAdjustment = needsAdjustmentPayment(loanStartDate, emiStart);
+  const isMoratoriumLoan = hasMoratoriumPeriod(loanStartDate, emiStart);
+  const needsPartialAdjustment = isShortPartialPeriodGap(loanStartDate, emiStart);
+  const rounding = loan.interestRounding ?? 'round';
+  const accrualMethod = resolveInterestAccrualMethod(loan);
+  const postingOrder = resolveEmiPostingOrder(loan);
 
   let emiCounter = 1;
   const adjustmentType = loan.adjustmentType ?? (isSplitLoan ? 'interest_only' : 'proportional');
-  const shouldAddAdjustment = needsAdjustment && loan.emiStartDate && adjustmentType !== 'none';
+  const shouldAddAdjustment = needsPartialAdjustment && loan.emiStartDate && adjustmentType !== 'none';
+
+  if (isMoratoriumLoan && (loan.disbursedPrincipal !== undefined || (loan.disbursements?.length ?? 0) > 0 || (loan.moratoriumRateChanges?.length ?? 0) > 0)) {
+    const moratorium = generateMoratoriumSchedule(loan);
+    schedule.push(...moratorium.entries);
+  }
 
   if (shouldAddAdjustment) {
     const adjustmentDueDate = loanStartDate;
@@ -622,13 +1051,32 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
     emiCounter = 1;
   }
 
-  const regularEMIStartMonth =
-    needsAdjustment && loan.emiStartDate ? startOfMonth(addMonths(loanStartMonth, 1)) : emiStartMonth;
+  const regularEMIStartMonth = emiStartMonth;
 
   const emiDay = loan.emiStartDate ? getDate(isoToDate(loan.emiStartDate)) : getDate(emiStart);
-  const totalRegularEMIs = loan.tenureMonths;
+  const isFixedEmi = loan.emiCalculationMode === 'fixed';
+  const maxIterations = isFixedEmi ? Math.max(loan.tenureMonths, 600) : loan.tenureMonths;
 
-  for (let i = 0; i < totalRegularEMIs; i++) {
+  if (isFixedEmi && isSplitLoan) {
+    componentBalances.forEach((component, index) => {
+      const share = loanComponents[index].principal / totalPrincipal;
+      component.emiAmount = Math.round(loan.emiAmount * share * 100) / 100;
+    });
+  }
+
+  for (let i = 0; i < maxIterations; i++) {
+    if (outstandingPrincipal <= 0.01) {
+      break;
+    }
+
+    if (isFixedEmi && i >= loan.tenureMonths) {
+      if (outstandingPrincipal <= 0.01) {
+        break;
+      }
+      // Fixed EMI below formula amount: continue past contractual tenure until repaid
+    } else if (i >= loan.tenureMonths) {
+      break;
+    }
     const monthForEMI = addMonths(regularEMIStartMonth, i);
     let dueDate = setDate(monthForEMI, emiDay);
 
@@ -642,14 +1090,15 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
         (isoToDate(m.date).getTime() <= dueDate.getTime() && m.type === 'interest_change'),
     );
 
-    const effectiveRate = modification?.newInterestRate ? modification.newInterestRate / 100 / 12 : monthlyRate;
+    const effectiveRate = modification?.newInterestRate ?? loan.interestRate;
+    const effectiveMonthlyRate = effectiveRate / 100 / 12;
 
     let principalComponent = 0;
     let interest = 0;
 
     if (isSplitLoan) {
       for (const component of componentBalances) {
-        const componentInterest = Math.round(component.outstanding * effectiveRate * 100) / 100;
+        const componentInterest = Math.round(component.outstanding * effectiveMonthlyRate * 100) / 100;
         const componentPrincipal = Math.round((component.emiAmount - componentInterest) * 100) / 100;
         const actualPrincipal = Math.min(componentPrincipal, component.outstanding);
 
@@ -658,11 +1107,18 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
         component.outstanding = Math.round((component.outstanding - actualPrincipal) * 100) / 100;
       }
     } else {
-      interest = Math.round(outstandingPrincipal * effectiveRate * 100) / 100;
-      principalComponent = Math.round((loan.emiAmount - interest) * 100) / 100;
-      const actualPrincipal = Math.min(principalComponent, outstandingPrincipal);
-      principalComponent = actualPrincipal;
-      outstandingPrincipal = Math.round((outstandingPrincipal - actualPrincipal) * 100) / 100;
+      const cycle = calculateRepaymentComponents(
+        outstandingPrincipal,
+        loan.emiAmount,
+        effectiveRate,
+        monthForEMI,
+        postingOrder,
+        accrualMethod,
+        rounding,
+      );
+      interest = cycle.interest;
+      principalComponent = cycle.principal;
+      outstandingPrincipal = cycle.closingBalance;
     }
 
     if (isSplitLoan) {
@@ -756,16 +1212,20 @@ export function recalculateAfterPrepayment(
       tenureMonths: prepaymentEMINumber + newTenure,
     };
   } else {
-    // Reduce EMI amount - keep same tenure
-    const remainingMonths = remainingEMIs.length;
-    if (remainingMonths > 0 && monthlyRate > 0) {
-      const newEMI =
-        (newOutstandingPrincipal * monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) /
-        (Math.pow(1 + monthlyRate, remainingMonths) - 1);
-      updatedLoan = {
-        ...loan,
-        emiAmount: Math.round(newEMI * 100) / 100,
-      };
+    // Reduce EMI amount - keep same tenure (unless user has a fixed bank-stated EMI)
+    if (loan.emiCalculationMode === 'fixed') {
+      updatedLoan = { ...loan };
+    } else {
+      const remainingMonths = remainingEMIs.length;
+      if (remainingMonths > 0 && monthlyRate > 0) {
+        const newEMI =
+          (newOutstandingPrincipal * monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) /
+          (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+        updatedLoan = {
+          ...loan,
+          emiAmount: Math.round(newEMI * 100) / 100,
+        };
+      }
     }
   }
 
@@ -886,31 +1346,6 @@ export function applyStepUp(
   };
 }
 
-function recalculateEMIComponents(
-  outstandingPrincipal: number,
-  emiAmount: number,
-  annualInterestRate: number,
-): {
-  interest: number;
-  principal: number;
-  total: number;
-  outstandingPrincipal: number;
-} {
-  const monthlyRate = annualInterestRate / 100 / 12;
-  const interest = Math.round(outstandingPrincipal * monthlyRate * 100) / 100;
-  const principal = Math.round((emiAmount - interest) * 100) / 100;
-  const actualPrincipal = Math.min(principal, outstandingPrincipal);
-  const total = actualPrincipal + interest;
-  const nextOutstanding = Math.round((outstandingPrincipal - actualPrincipal) * 100) / 100;
-
-  return {
-    interest,
-    principal: actualPrincipal,
-    total,
-    outstandingPrincipal: Math.max(0, nextOutstanding),
-  };
-}
-
 /**
  * Recalculate EMI schedule after an interest rate change
  */
@@ -922,30 +1357,50 @@ export function recalculateInterestRate(
 ): EMIScheduleEntry[] {
   const updatedSchedule = [...existingSchedule];
   const firstAffectedIndex = updatedSchedule.findIndex(
-    (emi) => affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending',
+    (emi) => affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending' && !emi.isMoratorium,
   );
 
   if (firstAffectedIndex === -1) {
     return updatedSchedule;
   }
 
-  let currentOutstanding = updatedSchedule[firstAffectedIndex].outstandingPrincipal;
+  const postingOrder = resolveEmiPostingOrder(loan);
+  const accrualMethod = resolveInterestAccrualMethod(loan);
+  const rounding = loan.interestRounding ?? 'round';
+
+  const previousRepaymentEntry = updatedSchedule
+    .slice(0, firstAffectedIndex)
+    .reverse()
+    .find((entry) => !entry.isMoratorium || entry.emiNumber > 0);
+
+  let currentOutstanding = previousRepaymentEntry
+    ? previousRepaymentEntry.outstandingPrincipal
+    : updatedSchedule[firstAffectedIndex].outstandingPrincipal + updatedSchedule[firstAffectedIndex].principal;
 
   for (let index = firstAffectedIndex; index < updatedSchedule.length; index++) {
     const emi = updatedSchedule[index];
-    if (!affectedEMIs.includes(emi.emiNumber) || emi.status !== 'pending') {
+    if (!affectedEMIs.includes(emi.emiNumber) || emi.status !== 'pending' || emi.isMoratorium) {
       continue;
     }
 
-    const recalculated = recalculateEMIComponents(currentOutstanding, loan.emiAmount, newInterestRate);
-    currentOutstanding = recalculated.outstandingPrincipal;
+    const monthDate = isoToDate(emi.dueDate);
+    const recalculated = calculateRepaymentComponents(
+      currentOutstanding,
+      loan.emiAmount,
+      newInterestRate,
+      monthDate,
+      postingOrder,
+      accrualMethod,
+      rounding,
+    );
+    currentOutstanding = recalculated.closingBalance;
 
     updatedSchedule[index] = {
       ...emi,
       interest: recalculated.interest,
       principal: recalculated.principal,
       total: recalculated.total,
-      outstandingPrincipal: recalculated.outstandingPrincipal,
+      outstandingPrincipal: recalculated.closingBalance,
       modifiedInterestRate: newInterestRate,
     };
   }
