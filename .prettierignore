@@ -1,7 +1,16 @@
-# Ignore configuration files that Prettier doesn't format
+# Cache
+.eslintcache
+
+# Config files Prettier should not rewrite
 .gitignore
 .prettierignore
 .npmrc
 
-# Ignore build artifacts and dependency folders
-node_modules
+dist/
+build/
+node_modules/
+.turbo/
+.react-router/
+.vite/
+coverage/
+.pnpm-store/

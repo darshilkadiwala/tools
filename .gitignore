@@ -8,11 +8,31 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.pnp
+.pnp.js
 dist
 dist-ssr
 *.local
 
+# Build Outputs
+.next
+out
+build
+dist
+
+# temp directory
+.temp
+.tmp
+
+# ESLint cache
 .eslintcache
+
+# typescript
+**/*.tsbuildinfo
+
+# Testing
+coverage
+.nyc_output
 
 # Editor directories and files
 # IDE - VSCode
@@ -24,8 +44,12 @@ dist-ssr
 
 .idea
 .DS_Store
+*.pem
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Vercel
+.vercel
