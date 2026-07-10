@@ -3,15 +3,19 @@ import type { JSX } from 'react';
 import { format } from 'date-fns';
 import { AlertCircle, CheckCircle2, Clock, Edit } from 'lucide-react';
 
+import { EmiNumberCell } from '@/components/emi/EmiNumberCell';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/calculations';
+import { formatEmiNumberLabel } from '@/lib/emi-label';
+import { formatEntryInterestRate, type ScheduleRateContext } from '@/lib/schedule-rate';
 import { cn, isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry } from '@/types';
 
 interface EMITableProps {
   schedule: EMIScheduleEntry[];
+  rateContext?: ScheduleRateContext;
   onSelectionChange?: (entryIds: string[]) => void;
   selectedEntryIds?: string[];
   embedded?: boolean;
@@ -19,6 +23,7 @@ interface EMITableProps {
 
 export function EMITable({
   schedule,
+  rateContext,
   onSelectionChange,
   selectedEntryIds = [],
   embedded = false,
@@ -88,15 +93,13 @@ export function EMITable({
             <TableHead className='text-right'>Total</TableHead>
             <TableHead className='text-right'>Outstanding</TableHead>
             <TableHead>Status</TableHead>
-            {schedule.some((emi) => emi.modifiedInterestRate) && (
-              <TableHead className='text-right'>Modified Rate</TableHead>
-            )}
+            <TableHead className='text-right'>Interest Rate</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {schedule.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showSelection ? 9 : 8} className='text-muted-foreground py-8 text-center'>
+              <TableCell colSpan={showSelection ? 10 : 9} className='text-muted-foreground py-8 text-center'>
                 No EMI schedule available
               </TableCell>
             </TableRow>
@@ -111,31 +114,14 @@ export function EMITable({
                     <Checkbox
                       checked={selectedEntryIds.includes(emi.id)}
                       onCheckedChange={() => handleRowClick(emi.id)}
-                      aria-label={
-                        emi.isMoratorium
-                          ? 'Select moratorium row'
-                          : emi.isAdjustment
-                            ? 'Select adjustment row'
-                            : `Select EMI ${emi.emiNumber}`
-                      }
+                      aria-label={`Select ${formatEmiNumberLabel(emi, { includeDisbursementLabel: true })}`}
                     />
                   </TableCell>
                 )}
                 <TableCell className='font-medium'>
-                  {emi.isDisbursement
-                    ? 'Disbursement'
-                    : emi.isMoratorium
-                      ? 'Moratorium'
-                      : emi.isAdjustment
-                        ? 'Adjustment'
-                        : emi.emiNumber}
+                  <EmiNumberCell emi={emi} />
                 </TableCell>
-                <TableCell>
-                  {format(isoToDate(emi.dueDate), 'MMM dd, yyyy')}
-                  {emi.isDisbursement && emi.disbursementLabel && (
-                    <p className='text-muted-foreground mt-0.5 text-xs font-normal'>{emi.disbursementLabel}</p>
-                  )}
-                </TableCell>
+                <TableCell>{format(isoToDate(emi.dueDate), 'MMM dd, yyyy')}</TableCell>
                 <TableCell className='text-right'>{formatCurrency(emi.principal)}</TableCell>
                 <TableCell className='text-right'>
                   {formatCurrency(emi.interest)}
@@ -155,11 +141,7 @@ export function EMITable({
                     <span className='capitalize'>{emi.status}</span>
                   </div>
                 </TableCell>
-                {schedule.some((e) => e.modifiedInterestRate) && (
-                  <TableCell className='text-right'>
-                    {emi.modifiedInterestRate ? `${emi.modifiedInterestRate.toFixed(2)}%` : '-'}
-                  </TableCell>
-                )}
+                <TableCell className='text-right'>{formatEntryInterestRate(emi, rateContext)}</TableCell>
               </TableRow>
             ))
           )}

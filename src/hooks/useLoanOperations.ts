@@ -7,6 +7,7 @@ import {
   recalculateInterestRate,
 } from '@/lib/calculations';
 import { addModification, bulkUpdateEMISchedules, getLoanById, getScheduleByLoanId } from '@/lib/db';
+import { isRegularEmiEntry } from '@/lib/schedule-entry';
 import { dateToISO, generateUUID } from '@/lib/utils';
 
 import type { EMIScheduleEntry, Loan, LoanModification } from '@/types';
@@ -87,7 +88,7 @@ export function useLoanOperations(): {
       await bulkUpdateEMISchedules(updatedSchedule);
 
       const affectedEMIs = existingSchedule
-        .filter((emi) => emi.emiNumber >= fromEMINumber && emi.status === 'pending')
+        .filter((emi) => isRegularEmiEntry(emi) && emi.emiNumber >= fromEMINumber && emi.status === 'pending')
         .map((emi) => emi.emiNumber);
 
       const modification: LoanModification = {
@@ -116,7 +117,9 @@ export function useLoanOperations(): {
       const existingSchedule = await getScheduleByLoanId(loanId);
       const affectedEMIs =
         affectedEMINumbers === 'all'
-          ? existingSchedule.filter((emi) => emi.status === 'pending').map((emi) => emi.emiNumber)
+          ? existingSchedule
+              .filter((emi) => isRegularEmiEntry(emi) && emi.status === 'pending')
+              .map((emi) => emi.emiNumber)
           : affectedEMINumbers;
 
       const updatedSchedule = recalculateInterestRate(loan, newInterestRate, affectedEMIs, existingSchedule);

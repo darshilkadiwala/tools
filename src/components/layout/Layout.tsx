@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { AppSidebar } from '@/components/layout/AppSidebar';
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -91,7 +92,9 @@ export function Layout(): JSX.Element {
           </div>
         </header>
         <div className='container mx-auto max-w-7xl flex-1 p-4 md:p-6 lg:p-8'>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
         <TailwindIndicator />
       </SidebarInset>

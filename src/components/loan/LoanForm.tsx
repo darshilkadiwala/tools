@@ -71,6 +71,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
           })),
           interestAccrualMethod: loan.interestAccrualMethod,
           emiPostingOrder: loan.emiPostingOrder,
+          moratoriumInterestMode: loan.moratoriumInterestMode,
         }
       : {
           name: '',
@@ -174,6 +175,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
         : {}),
       ...(data.interestAccrualMethod ? { interestAccrualMethod: data.interestAccrualMethod } : {}),
       ...(data.emiPostingOrder ? { emiPostingOrder: data.emiPostingOrder } : {}),
+      ...(data.moratoriumInterestMode ? { moratoriumInterestMode: data.moratoriumInterestMode } : {}),
       startDate: dateToISO(isoDateStringToDate(data.startDate)),
       emiStartDate: dateToISO(isoDateStringToDate(data.emiStartDate)),
       ...(needsAdjustment

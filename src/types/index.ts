@@ -2,6 +2,9 @@ export type LoanType = 'home' | 'car' | 'education' | 'personal' | 'other';
 
 export type EMIStatus = 'pending' | 'paid' | 'modified' | 'upcoming';
 
+/** Kind of row in the EMI schedule ledger */
+export type ScheduleEntryKind = 'emi' | 'adjustment' | 'moratorium' | 'disbursement';
+
 export type ModificationType = 'prepayment' | 'stepup' | 'interest_change';
 
 /** How to handle the partial period between loan disbursement and first EMI */
@@ -18,6 +21,12 @@ export type InterestAccrualMethod = 'monthly_reducing' | 'actual_365';
 
 /** How the bank applies EMI vs interest within each repayment cycle */
 export type EmiPostingOrder = 'standard' | 'emi_first';
+
+/**
+ * How moratorium interest is accrued before regular EMIs begin.
+ * SBI charges simple interest on each disbursed tranche (not on capitalized interest).
+ */
+export type MoratoriumInterestMode = 'simple_on_disbursements' | 'compound_on_outstanding';
 
 export interface LoanDisbursement {
   date: string;
@@ -59,6 +68,8 @@ export interface Loan {
   interestAccrualMethod?: InterestAccrualMethod;
   /** Whether EMI is credited before month-end interest is charged (SBI-style ledger) */
   emiPostingOrder?: EmiPostingOrder;
+  /** Moratorium interest base — SBI uses simple interest on disbursed tranches only */
+  moratoriumInterestMode?: MoratoriumInterestMode;
   emiAmount: number; // Total monthly EMI (formula-derived or user-fixed)
   createdAt: string; // ISO UTC string
   updatedAt: string; // ISO UTC string
@@ -67,14 +78,17 @@ export interface Loan {
 export interface EMIScheduleEntry {
   id: string;
   loanId: string;
+  /** Sequence within the entry kind (EMI 1, 2…; Moratorium 1, 2…; etc.) */
   emiNumber: number;
+  /** Row type — source of truth for moratorium, disbursement, adjustment vs regular EMI */
+  entryKind?: ScheduleEntryKind;
   dueDate: string; // ISO UTC string
   principal: number;
   interest: number;
   total: number;
   outstandingPrincipal: number;
   status: EMIStatus;
-  modifiedInterestRate?: number; // If rate changed for this EMI
+  modifiedInterestRate?: number; // Effective annual rate applied to this entry
   isAdjustment?: boolean; // True if this is an adjustment payment (partial first month)
   /** True for interest-only study/moratorium period entries before regular EMIs begin */
   isMoratorium?: boolean;

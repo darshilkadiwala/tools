@@ -146,6 +146,7 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
     schedule.push({
       id: `${loan.id}-emi-adjustment`,
       loanId: loan.id,
+      entryKind: 'adjustment',
       emiNumber: 0,
       dueDate: dateToISO(adjustmentDueDate),
       principal: adjustment.principal,
@@ -155,6 +156,7 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
       status: getEMIStatus(adjustmentDueDate),
       isAdjustment: true,
       adjustmentComponents: resolved.components,
+      modifiedInterestRate: loan.interestRate,
     });
 
     emiCounter = 1;
@@ -240,6 +242,7 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
     schedule.push({
       id: `${loan.id}-emi-${emiCounter}`,
       loanId: loan.id,
+      entryKind: 'emi',
       emiNumber: emiCounter,
       dueDate: dateToISO(dueDate),
       principal: principalComponent,
@@ -247,7 +250,7 @@ export function generateEMISchedule(loan: Loan, modifications: LoanModification[
       total: actualTotal,
       outstandingPrincipal: Math.max(0, outstandingPrincipal),
       status: getEMIStatus(dueDate),
-      modifiedInterestRate: modification?.newInterestRate,
+      modifiedInterestRate: effectiveRate,
       isAdjustment: false,
     });
 

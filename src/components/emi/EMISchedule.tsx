@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 
 import { getYear } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { InlineError } from '@/components/ui/inline-error';
 import { PageLoader } from '@/components/ui/page-loader';
 import { useEMISchedule } from '@/contexts/EMIScheduleContext';
+import { useScheduleUrlFilters, type DueDateSort } from '@/hooks/useScheduleUrlFilters';
 import { exportScheduleToCSV } from '@/lib/csv';
+import { getMaxRegularEmiNumber } from '@/lib/schedule-entry';
+import type { ScheduleRateContext } from '@/lib/schedule-rate';
 import { isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry } from '@/types';
@@ -21,8 +24,6 @@ import { UpdateEMIDateDialog } from './UpdateEMIDateDialog';
 
 const PAGE_SIZE = 12;
 
-type DueDateSort = 'asc' | 'desc';
-
 interface ScheduleView {
   availableYears: number[];
   effectiveYear: number | null;
@@ -35,6 +36,7 @@ interface ScheduleView {
 
 interface EMIScheduleProps {
   loanId: string;
+  rateContext?: ScheduleRateContext;
   onPrepayment?: () => void;
   onStepUp?: () => void;
   onInterestChange?: () => void;
@@ -142,6 +144,7 @@ function SchedulePagination({
 
 export function EMISchedule({
   loanId,
+  rateContext,
   onPrepayment,
   onStepUp,
   onInterestChange,
@@ -149,10 +152,9 @@ export function EMISchedule({
   selectedEntryIds: externalSelectedEntryIds,
 }: EMIScheduleProps): JSX.Element {
   const { schedule, loading, error, regenerateSchedule, refreshSchedule, markAsPaidBulk } = useEMISchedule();
+  const { selectedYear, dueDateSort, currentPage, setSelectedYear, setDueDateSort, setCurrentPage } =
+    useScheduleUrlFilters();
   const [internalSelectedEntryIds, setInternalSelectedEntryIds] = useState<string[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
-  const [dueDateSort, setDueDateSort] = useState<DueDateSort>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
   const [showUpdateEMIDate, setShowUpdateEMIDate] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showMarkAllPendingConfirm, setShowMarkAllPendingConfirm] = useState(false);
@@ -213,19 +215,29 @@ export function EMISchedule({
     [schedule, pendingEntries.length, filteredSchedule.length],
   );
 
-  const handleYearChange = useCallback((value: string): void => {
-    setSelectedYear(value === 'all' ? null : Number.parseInt(value, 10));
-    setCurrentPage(1);
-  }, []);
+  const handleYearChange = useCallback(
+    (value: string): void => {
+      setSelectedYear(value === 'all' ? null : Number.parseInt(value, 10));
+    },
+    [setSelectedYear],
+  );
 
-  const handleSortChange = useCallback((value: DueDateSort): void => {
-    setDueDateSort(value);
-    setCurrentPage(1);
-  }, []);
+  const handleSortChange = useCallback(
+    (value: DueDateSort): void => {
+      setDueDateSort(value);
+    },
+    [setDueDateSort],
+  );
+
+  useEffect(() => {
+    if (showPagination && safeCurrentPage !== currentPage) {
+      setCurrentPage(safeCurrentPage);
+    }
+  }, [showPagination, safeCurrentPage, currentPage, setCurrentPage]);
 
   const handleExport = useCallback((): void => {
-    exportScheduleToCSV(filteredSchedule, loanId, effectiveYear?.toString() ?? 'all');
-  }, [filteredSchedule, loanId, effectiveYear]);
+    exportScheduleToCSV(filteredSchedule, loanId, effectiveYear?.toString() ?? 'all', rateContext);
+  }, [filteredSchedule, loanId, effectiveYear, rateContext]);
 
   const handleRegenerate = useCallback(async (): Promise<void> => {
     try {
@@ -310,6 +322,7 @@ export function EMISchedule({
 
           <EMITable
             schedule={displaySchedule}
+            rateContext={rateContext}
             onSelectionChange={handleSelectedEntryIdsChange}
             selectedEntryIds={selectedEntryIds}
             embedded
@@ -340,7 +353,7 @@ export function EMISchedule({
         open={showUpdateEMIDate}
         onOpenChange={setShowUpdateEMIDate}
         loanId={loanId}
-        maxEMINumber={schedule.length > 0 ? schedule[schedule.length - 1].emiNumber : 0}
+        maxEMINumber={getMaxRegularEmiNumber(schedule)}
         onSuccess={() => {
           setShowUpdateEMIDate(false);
           void refreshSchedule();
@@ -359,6 +372,7 @@ export function EMISchedule({
         open={showMarkAllPendingConfirm}
         onOpenChange={setShowMarkAllPendingConfirm}
         pendingEntries={pendingEntries}
+        rateContext={rateContext}
         isProcessing={isMarkingAllPending}
         onConfirm={() => void handleMarkAllPendingAsPaid()}
       />
