@@ -1,3 +1,4 @@
+import { isRegularEmiEntry, resolveEntryKind } from '@/lib/schedule-entry';
 import { isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry, Loan } from '@/types';
@@ -18,7 +19,7 @@ export function recalculateAfterPrepayment(
   updatedSchedule: EMIScheduleEntry[];
 } {
   // Find the EMI where prepayment is made
-  const prepaymentEMI = existingSchedule.find((emi) => emi.emiNumber === prepaymentEMINumber);
+  const prepaymentEMI = existingSchedule.find((emi) => isRegularEmiEntry(emi) && emi.emiNumber === prepaymentEMINumber);
 
   if (!prepaymentEMI) {
     throw new Error(`EMI number ${prepaymentEMINumber} not found`);
@@ -33,7 +34,7 @@ export function recalculateAfterPrepayment(
 
   // Get remaining EMIs
   const remainingEMIs = existingSchedule.filter(
-    (emi) => emi.emiNumber > prepaymentEMINumber && emi.status === 'pending',
+    (emi) => isRegularEmiEntry(emi) && emi.emiNumber > prepaymentEMINumber && emi.status === 'pending',
   );
 
   if (remainingEMIs.length === 0) {
@@ -149,7 +150,7 @@ export function applyStepUp(
 
   // Update affected EMIs
   const updatedSchedule = existingSchedule.map((emi) => {
-    if (emi.emiNumber >= fromEMINumber && emi.status === 'pending') {
+    if (emi.emiNumber >= fromEMINumber && emi.status === 'pending' && isRegularEmiEntry(emi)) {
       const monthlyRate = loan.interestRate / 100 / 12;
       const interest = Math.round(emi.outstandingPrincipal * monthlyRate * 100) / 100;
       const principal = Math.round((newEMIAmount - interest) * 100) / 100;
@@ -170,10 +171,12 @@ export function applyStepUp(
   });
 
   // Recalculate outstanding principal for subsequent EMIs
-  let currentOutstanding = updatedSchedule.find((e) => e.emiNumber === fromEMINumber)?.outstandingPrincipal || 0;
+  let currentOutstanding =
+    updatedSchedule.find((entry) => isRegularEmiEntry(entry) && entry.emiNumber === fromEMINumber)
+      ?.outstandingPrincipal || 0;
 
   for (let i = fromEMINumber + 1; i <= loan.tenureMonths; i++) {
-    const emi = updatedSchedule.find((e) => e.emiNumber === i);
+    const emi = updatedSchedule.find((entry) => isRegularEmiEntry(entry) && entry.emiNumber === i);
     if (emi && emi.status === 'pending') {
       const monthlyRate = loan.interestRate / 100 / 12;
       const interest = Math.round(currentOutstanding * monthlyRate * 100) / 100;
@@ -213,7 +216,7 @@ export function recalculateInterestRate(
 ): EMIScheduleEntry[] {
   const updatedSchedule = [...existingSchedule];
   const firstAffectedIndex = updatedSchedule.findIndex(
-    (emi) => affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending' && !emi.isMoratorium,
+    (emi) => affectedEMIs.includes(emi.emiNumber) && emi.status === 'pending' && isRegularEmiEntry(emi),
   );
 
   if (firstAffectedIndex === -1) {
@@ -227,7 +230,7 @@ export function recalculateInterestRate(
   const previousRepaymentEntry = updatedSchedule
     .slice(0, firstAffectedIndex)
     .reverse()
-    .find((entry) => !entry.isMoratorium || entry.emiNumber > 0);
+    .find((entry) => isRegularEmiEntry(entry) || resolveEntryKind(entry) === 'adjustment');
 
   let currentOutstanding = previousRepaymentEntry
     ? previousRepaymentEntry.outstandingPrincipal
@@ -235,7 +238,7 @@ export function recalculateInterestRate(
 
   for (let index = firstAffectedIndex; index < updatedSchedule.length; index++) {
     const emi = updatedSchedule[index];
-    if (!affectedEMIs.includes(emi.emiNumber) || emi.status !== 'pending' || emi.isMoratorium) {
+    if (!affectedEMIs.includes(emi.emiNumber) || emi.status !== 'pending' || !isRegularEmiEntry(emi)) {
       continue;
     }
 

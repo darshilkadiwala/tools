@@ -26,11 +26,13 @@ export {
 // Moratorium
 export {
   calculateMoratoriumMonthInterest,
+  calculateSimpleMoratoriumMonthInterest,
   getEffectiveMoratoriumRate,
   getMoratoriumMonthCount,
   hasMoratoriumPeriod,
   resolveEmiPostingOrder,
   resolveInterestAccrualMethod,
+  resolveMoratoriumInterestMode,
 } from './moratorium';
 
 // Adjustments
