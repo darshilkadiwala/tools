@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
-import { AppSidebar } from '@/components/AppSidebar';
+import { AppSidebar } from '@/components/layout/AppSidebar';
 import {
   Breadcrumb,
   BreadcrumbItem,
