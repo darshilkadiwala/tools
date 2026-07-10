@@ -1,3 +1,5 @@
+import { formatEmiNumberLabel } from '@/lib/emi-label';
+import { formatEntryInterestRate, type ScheduleRateContext } from '@/lib/schedule-rate';
 import { isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry } from '@/types';
@@ -10,20 +12,35 @@ function escapeCSVValue(value: string | number): string {
   return stringValue;
 }
 
-export function exportScheduleToCSV(schedule: EMIScheduleEntry[], loanId: string, yearLabel: string): void {
+export function exportScheduleToCSV(
+  schedule: EMIScheduleEntry[],
+  loanId: string,
+  yearLabel: string,
+  rateContext?: ScheduleRateContext,
+): void {
   if (schedule.length === 0) {
     return;
   }
 
-  const headers = ['EMI #', 'Due Date', 'Principal', 'Interest', 'Total', 'Outstanding Principal', 'Status'];
+  const headers = [
+    'EMI #',
+    'Due Date',
+    'Principal',
+    'Interest',
+    'Total',
+    'Outstanding Principal',
+    'Status',
+    'Interest Rate',
+  ];
   const rows = schedule.map((emi) => [
-    emi.isAdjustment ? 'Adjustment' : emi.emiNumber,
+    formatEmiNumberLabel(emi, { includeDisbursementLabel: true }),
     isoToDate(emi.dueDate).toISOString().split('T')[0],
     emi.principal,
     emi.interest,
     emi.total,
     emi.outstandingPrincipal,
     emi.status,
+    formatEntryInterestRate(emi, rateContext),
   ]);
 
   const csvContent = [headers, ...rows].map((row) => row.map((cell) => escapeCSVValue(cell)).join(',')).join('\n');

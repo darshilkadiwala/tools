@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 
 import { Calendar, PencilIcon, Percent, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -15,6 +15,8 @@ import { PageLoader } from '@/components/ui/page-loader';
 import { EMIScheduleProvider, useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanContext } from '@/contexts/LoanContext';
 import { formatCurrency, getCurrentOutstanding, getLoanComponents, getTotalPrincipal } from '@/lib/calculations';
+import { getMaxRegularEmiNumber, isRegularEmiEntry } from '@/lib/schedule-entry';
+import type { ScheduleRateContext } from '@/lib/schedule-rate';
 
 function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
   const navigate = useNavigate();
@@ -28,7 +30,17 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
 
   const loan = loans.loans.find((item) => item.id === loanId);
-  const maxEMINumber = schedule.length > 0 ? schedule[schedule.length - 1].emiNumber : 0;
+  const maxEMINumber = getMaxRegularEmiNumber(schedule);
+  const rateContext = useMemo<ScheduleRateContext | undefined>(
+    () =>
+      loan
+        ? {
+            baseInterestRate: loan.interestRate,
+            moratoriumRateChanges: loan.moratoriumRateChanges,
+          }
+        : undefined,
+    [loan],
+  );
 
   useEffect(() => {
     if (!loans.loading && !loan) {
@@ -49,7 +61,7 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
   }
 
   const selectedEMIs = schedule
-    .filter((emi) => selectedEntryIds.includes(emi.id) && !emi.isAdjustment)
+    .filter((emi) => selectedEntryIds.includes(emi.id) && isRegularEmiEntry(emi))
     .map((emi) => emi.emiNumber);
 
   const totalLoanPrincipal = getTotalPrincipal(loan);
@@ -59,7 +71,7 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
   const totalInterest = schedule.reduce((sum, emi) => sum + emi.interest, 0);
 
   return (
-    <div className='space-y-8'>
+    <div className='space-y-4'>
       <div className='flex items-start justify-between'>
         <div>
           <h1 className='mb-2 text-3xl font-semibold tracking-tight'>{loan.name}</h1>
@@ -82,11 +94,11 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
       </div>
 
       <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
-        <Card className='border-2'>
-          <CardHeader className='pb-3'>
+        <Card>
+          <CardHeader>
             <div className='mb-2 flex items-center gap-2'>
               <div className='rounded-lg bg-orange-100 p-2 dark:bg-orange-900/20'>
-                <Wallet className='h-5 w-5 text-orange-600 dark:text-orange-400' />
+                <Wallet className='size-5 text-orange-600 dark:text-orange-400' />
               </div>
               <CardDescription className='text-xs'>Principal Amount</CardDescription>
             </div>
@@ -98,22 +110,22 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
             )}
           </CardHeader>
         </Card>
-        <Card className='border-2'>
-          <CardHeader className='pb-3'>
+        <Card>
+          <CardHeader>
             <div className='mb-2 flex items-center gap-2'>
               <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
-                <TrendingUp className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+                <TrendingUp className='size-5 text-purple-600 dark:text-purple-400' />
               </div>
               <CardDescription className='text-xs'>Outstanding</CardDescription>
             </div>
             <CardTitle className='text-2xl font-bold'>{formatCurrency(totalOutstanding)}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className='border-2'>
-          <CardHeader className='pb-3'>
+        <Card>
+          <CardHeader>
             <div className='mb-2 flex items-center gap-2'>
               <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
-                <Percent className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                <Percent className='size-5 text-blue-600 dark:text-blue-400' />
               </div>
               <CardDescription className='text-xs'>EMI Amount</CardDescription>
             </div>
@@ -129,11 +141,11 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
             )}
           </CardHeader>
         </Card>
-        <Card className='border-2'>
-          <CardHeader className='pb-3'>
+        <Card>
+          <CardHeader>
             <div className='mb-2 flex items-center gap-2'>
               <div className='rounded-lg bg-teal-100 p-2 dark:bg-teal-900/20'>
-                <Calendar className='h-5 w-5 text-teal-600 dark:text-teal-400' />
+                <Calendar className='size-5 text-teal-600 dark:text-teal-400' />
               </div>
               <CardDescription className='text-xs'>Total Interest</CardDescription>
             </div>
@@ -144,6 +156,7 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
 
       <EMISchedule
         loanId={loan.id}
+        rateContext={rateContext}
         onPrepayment={() => setShowPrepayment(true)}
         onStepUp={() => setShowStepUp(true)}
         onInterestChange={() => setShowInterestChange(true)}
