@@ -2,7 +2,6 @@ import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,20 +17,8 @@ import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
 import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { updateEMIDateRange } from '@/lib/db';
+import { updateEMIDateSchema, type UpdateEMIDateFormValues } from '@/lib/schemas/emi-date-schema';
 import { dateToISODateString } from '@/lib/utils';
-
-const updateEMIDateSchema = z
-  .object({
-    startEMINumber: z.number().min(1, 'Start EMI number must be at least 1'),
-    endEMINumber: z.number().min(1, 'End EMI number must be at least 1'),
-    newStartDate: z.string().min(1, 'New start date is required'),
-  })
-  .refine((data) => data.endEMINumber >= data.startEMINumber, {
-    message: 'End EMI number must be greater than or equal to start EMI number',
-    path: ['endEMINumber'],
-  });
-
-type UpdateEMIDateFormValues = z.infer<typeof updateEMIDateSchema>;
 
 interface UpdateEMIDateDialogProps {
   open: boolean;

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { needsAdjustmentPayment, calculateMinimumFixedEMI, calculateTotalLoanEMI, hasMoratoriumPeriod } from '@/lib/calculations';
+import {
+  calculateMinimumFixedEMI,
+  calculateTotalLoanEMI,
+  hasMoratoriumPeriod,
+  needsAdjustmentPayment,
+} from '@/lib/calculations';
 import { isoDateStringToDate } from '@/lib/utils';
 
 export const loanFormSchema = z
@@ -35,10 +40,7 @@ export const loanFormSchema = z
       .array(
         z.object({
           date: z.string().min(1, 'Rate change date is required'),
-          newInterestRate: z
-            .number()
-            .min(0, 'Rate must be non-negative')
-            .max(100, 'Rate cannot exceed 100%'),
+          newInterestRate: z.number().min(0, 'Rate must be non-negative').max(100, 'Rate cannot exceed 100%'),
         }),
       )
       .optional(),
