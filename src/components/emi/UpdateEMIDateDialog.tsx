@@ -1,7 +1,6 @@
 import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { addMonths, parse } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -18,9 +17,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { InlineError } from '@/components/ui/inline-error';
 import { Input } from '@/components/ui/input';
 import { useEMISchedule } from '@/contexts/EMIScheduleContext';
-import { db } from '@/lib/db';
-import { bulkUpdateEMISchedules } from '@/lib/db-operations';
-import { dateToISO, dateToISODateString } from '@/lib/utils';
+import { updateEMIDateRange } from '@/lib/db';
+import { dateToISODateString } from '@/lib/utils';
 
 const updateEMIDateSchema = z
   .object({
@@ -68,21 +66,7 @@ export function UpdateEMIDateDialog({
       setLoading(true);
       setSubmitError(null);
 
-      const allEMIs = await db.emiSchedules.where('loanId').equals(loanId).sortBy('emiNumber');
-      const startEMI = allEMIs.find((emi) => emi.emiNumber === data.startEMINumber);
-      if (!startEMI) {
-        throw new Error(`EMI number ${data.startEMINumber} not found`);
-      }
-
-      const newStartDate = parse(data.newStartDate, 'yyyy-MM-dd', new Date());
-      const updatedEMIs = allEMIs
-        .filter((emi) => emi.emiNumber >= data.startEMINumber && emi.emiNumber <= data.endEMINumber)
-        .map((emi) => ({
-          ...emi,
-          dueDate: dateToISO(addMonths(newStartDate, emi.emiNumber - data.startEMINumber)),
-        }));
-
-      await bulkUpdateEMISchedules(updatedEMIs);
+      await updateEMIDateRange(loanId, data.startEMINumber, data.endEMINumber, data.newStartDate);
       await refreshSchedule();
       form.reset();
       onOpenChange(false);

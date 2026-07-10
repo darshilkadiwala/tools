@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { calculateTotalLoanEMI, resolveLoanEmiAmount } from '@/lib/calculations';
-import { db } from '@/lib/db';
-import { deleteLoanData } from '@/lib/db-operations';
+import { createLoan as createLoanRecord, deleteLoanData, getAllLoans, getLoanById, saveLoan } from '@/lib/db';
 import { dateToISO, generateUUID } from '@/lib/utils';
 
 import type { Loan } from '@/types';
@@ -26,7 +25,7 @@ export function useLoans(): {
   const loadLoans = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      const allLoans = await db.loans.toArray();
+      const allLoans = await getAllLoans();
       setLoans(allLoans);
       setError(null);
     } catch (err) {
@@ -54,7 +53,7 @@ export function useLoans(): {
         updatedAt: dateToISO(new Date()),
       };
 
-      await db.loans.add(newLoan);
+      await createLoanRecord(newLoan);
       setLoans((currentLoans) => [...currentLoans, newLoan]);
       return newLoan;
     },
@@ -64,7 +63,7 @@ export function useLoans(): {
   const updateLoan = useCallback(
     async (id: string, updates: Partial<Loan> & { fixedEmiAmount?: number }): Promise<Loan> => {
       const { fixedEmiAmount, ...loanUpdates } = updates;
-      const existingLoan = await db.loans.get(id);
+      const existingLoan = await getLoanById(id);
       if (!existingLoan) {
         throw new Error('Loan not found');
       }
@@ -102,7 +101,7 @@ export function useLoans(): {
         );
       }
 
-      await db.loans.put(updatedLoan);
+      await saveLoan(updatedLoan);
       setLoans((currentLoans) => currentLoans.map((loan) => (loan.id === id ? updatedLoan : loan)));
       return updatedLoan;
     },
@@ -115,7 +114,7 @@ export function useLoans(): {
   }, []);
 
   const getLoan = useCallback(async (id: string): Promise<Loan | undefined> => {
-    return db.loans.get(id);
+    return getLoanById(id);
   }, []);
 
   return {

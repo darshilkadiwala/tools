@@ -6,8 +6,7 @@ import {
   recalculateAfterPrepayment,
   recalculateInterestRate,
 } from '@/lib/calculations';
-import { db } from '@/lib/db';
-import { addModification, bulkUpdateEMISchedules } from '@/lib/db-operations';
+import { addModification, bulkUpdateEMISchedules, getLoanById, getScheduleByLoanId } from '@/lib/db';
 import { dateToISO, generateUUID } from '@/lib/utils';
 
 import type { EMIScheduleEntry, Loan, LoanModification } from '@/types';
@@ -36,12 +35,12 @@ export function useLoanOperations(): {
 
   const applyPrepayment = useCallback(
     async (loanId: string, prepaymentAmount: number, prepaymentEMINumber: number, reduceTenure: boolean = false) => {
-      const loan = await db.loans.get(loanId);
+      const loan = await getLoanById(loanId);
       if (!loan) {
         throw new Error('Loan not found');
       }
 
-      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const existingSchedule = await getScheduleByLoanId(loanId);
       const { updatedLoan, updatedSchedule } = recalculateAfterPrepayment(
         loan,
         prepaymentAmount,
@@ -70,12 +69,12 @@ export function useLoanOperations(): {
 
   const applyStepUp = useCallback(
     async (loanId: string, stepUpAmount: number | null, stepUpPercentage: number | null, fromEMINumber: number) => {
-      const loan = await db.loans.get(loanId);
+      const loan = await getLoanById(loanId);
       if (!loan) {
         throw new Error('Loan not found');
       }
 
-      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const existingSchedule = await getScheduleByLoanId(loanId);
       const { updatedLoan, updatedSchedule } = applyStepUpCalculation(
         loan,
         stepUpAmount,
@@ -109,12 +108,12 @@ export function useLoanOperations(): {
 
   const changeInterestRate = useCallback(
     async (loanId: string, newInterestRate: number, affectedEMINumbers: number[] | 'all') => {
-      const loan = await db.loans.get(loanId);
+      const loan = await getLoanById(loanId);
       if (!loan) {
         throw new Error('Loan not found');
       }
 
-      const existingSchedule = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+      const existingSchedule = await getScheduleByLoanId(loanId);
       const affectedEMIs =
         affectedEMINumbers === 'all'
           ? existingSchedule.filter((emi) => emi.status === 'pending').map((emi) => emi.emiNumber)
