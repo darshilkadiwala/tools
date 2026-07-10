@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { calculateEMI } from '@/lib/calculations';
 import type { Loan } from '@/types';
 
 import {
@@ -17,6 +18,7 @@ const trancheLoan: Loan = {
   tenureMonths: 84,
   startDate: '2018-10-15T00:00:00.000Z',
   emiStartDate: '2024-03-05T00:00:00.000Z',
+  emiAmount: calculateEMI(560_137, 10.55, 84),
   interestAccrualMethod: 'actual_365',
   disbursements: [
     { date: '2018-10-15T00:00:00.000Z', amount: 98_700, label: 'EDU disb' },
