@@ -75,12 +75,13 @@ pnpm test:watch
 ```
 src/
 ├── pages/           # Route-level screens
+├── routes.tsx       # Lazy-loaded route definitions
 ├── components/
 │   ├── loan/        # Loan domain UI
 │   ├── emi/         # EMI schedule UI
-│   ├── payment/     # Prepayment and step-up dialogs
-│   ├── ui/          # shadcn primitives
-│   └── layout/      # App shell (sidebar, layout)
+│   ├── modifications/  # Prepayment and step-up dialogs
+│   ├── layout/      # App shell (sidebar, layout, error boundary)
+│   └── ui/          # shadcn primitives
 ├── hooks/           # Reusable stateful logic
 ├── contexts/        # React context providers
 ├── lib/             # Business logic, persistence, utilities
