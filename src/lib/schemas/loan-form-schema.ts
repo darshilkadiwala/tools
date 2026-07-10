@@ -27,6 +27,7 @@ export const loanFormSchema = z
     disbursedPrincipal: z.number().min(0).optional(),
     interestAccrualMethod: z.enum(['monthly_reducing', 'actual_365']).optional(),
     emiPostingOrder: z.enum(['standard', 'emi_first']).optional(),
+    moratoriumInterestMode: z.enum(['simple_on_disbursements', 'compound_on_outstanding']).optional(),
     disbursements: z
       .array(
         z.object({
