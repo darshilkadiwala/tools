@@ -118,6 +118,9 @@ function LoanDetailsContent({ loanId }: { loanId: string }): JSX.Element {
               <CardDescription className='text-xs'>EMI Amount</CardDescription>
             </div>
             <CardTitle className='text-2xl font-bold'>{formatCurrency(loan.emiAmount)}</CardTitle>
+            {loan.emiCalculationMode === 'fixed' && (
+              <CardDescription className='text-xs'>Fixed bank-stated EMI</CardDescription>
+            )}
             {hasInsurance && (
               <CardDescription className='text-xs'>
                 Principal {formatCurrency(Math.round(loanComponents[0].emiAmount))} + Insurance{' '}

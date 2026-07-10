@@ -111,12 +111,31 @@ export function EMITable({
                     <Checkbox
                       checked={selectedEntryIds.includes(emi.id)}
                       onCheckedChange={() => handleRowClick(emi.id)}
-                      aria-label={emi.isAdjustment ? 'Select adjustment row' : `Select EMI ${emi.emiNumber}`}
+                      aria-label={
+                        emi.isMoratorium
+                          ? 'Select moratorium row'
+                          : emi.isAdjustment
+                            ? 'Select adjustment row'
+                            : `Select EMI ${emi.emiNumber}`
+                      }
                     />
                   </TableCell>
                 )}
-                <TableCell className='font-medium'>{emi.isAdjustment ? 'Adjustment' : emi.emiNumber}</TableCell>
-                <TableCell>{format(isoToDate(emi.dueDate), 'MMM dd, yyyy')}</TableCell>
+                <TableCell className='font-medium'>
+                  {emi.isDisbursement
+                    ? 'Disbursement'
+                    : emi.isMoratorium
+                      ? 'Moratorium'
+                      : emi.isAdjustment
+                        ? 'Adjustment'
+                        : emi.emiNumber}
+                </TableCell>
+                <TableCell>
+                  {format(isoToDate(emi.dueDate), 'MMM dd, yyyy')}
+                  {emi.isDisbursement && emi.disbursementLabel && (
+                    <p className='text-muted-foreground mt-0.5 text-xs font-normal'>{emi.disbursementLabel}</p>
+                  )}
+                </TableCell>
                 <TableCell className='text-right'>{formatCurrency(emi.principal)}</TableCell>
                 <TableCell className='text-right'>
                   {formatCurrency(emi.interest)}
