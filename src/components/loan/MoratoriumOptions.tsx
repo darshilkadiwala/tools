@@ -13,6 +13,7 @@ import {
   hasMoratoriumPeriod,
   resolveEmiPostingOrder,
   resolveInterestAccrualMethod,
+  resolveMoratoriumInterestMode,
 } from '@/lib/calculations';
 import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 import { cn, isoDateStringToDate } from '@/lib/utils';
@@ -45,6 +46,7 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
     interestRate,
     interestAccrualMethod,
     emiPostingOrder,
+    moratoriumInterestMode,
   ] = useWatch({
     control,
     name: [
@@ -57,6 +59,7 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
       'interestRate',
       'interestAccrualMethod',
       'emiPostingOrder',
+      'moratoriumInterestMode',
     ],
   });
 
@@ -92,6 +95,13 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
   const resolvedPosting = resolveEmiPostingOrder({
     type: loanType ?? 'home',
     emiPostingOrder,
+    startDate: startDate ?? '',
+    emiStartDate,
+  });
+
+  const resolvedMoratoriumInterest = resolveMoratoriumInterestMode({
+    type: loanType ?? 'home',
+    moratoriumInterestMode,
     startDate: startDate ?? '',
     emiStartDate,
   });
@@ -155,19 +165,47 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
           startingRate={interestRate}
         />
 
-        <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+        <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3'>
+          <FormField
+            control={control}
+            name='moratoriumInterestMode'
+            render={({ field }) => (
+              <FormItem className='min-w-0'>
+                <FieldLabel help='SBI charges simple interest on each disbursed tranche during study/moratorium. Capitalized interest does not earn further interest until EMIs begin.'>
+                  Moratorium interest
+                </FieldLabel>
+                <Select onValueChange={field.onChange} value={field.value ?? resolvedMoratoriumInterest}>
+                  <FormControl>
+                    <SelectTrigger className='w-full min-w-0 overflow-hidden'>
+                      <SelectValue placeholder='Select method' />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent position='popper'>
+                    <SelectItem value='simple_on_disbursements'>
+                      Simple interest on disbursed tranches (SBI-style)
+                    </SelectItem>
+                    <SelectItem value='compound_on_outstanding'>
+                      Interest on full outstanding (includes capitalized interest)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={control}
             name='interestAccrualMethod'
             render={({ field }) => (
-              <FormItem>
+              <FormItem className='min-w-0'>
                 <FieldLabel help='SBI education loans typically use actual/365 day-count for monthly interest.'>
                   Interest calculation
                 </FieldLabel>
                 <Select onValueChange={field.onChange} value={field.value ?? resolvedAccrual}>
                   <FormControl>
-                    <SelectTrigger className='w-full'>
-                      <SelectValue placeholder='Select method' />
+                    <SelectTrigger className='w-full min-w-0 overflow-hidden'>
+                      <SelectValue placeholder='Select method' className='truncate' />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent position='popper'>
@@ -184,14 +222,14 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
             control={control}
             name='emiPostingOrder'
             render={({ field }) => (
-              <FormItem>
+              <FormItem className='min-w-0'>
                 <FieldLabel help='SBI credits the full EMI first, then charges month-end interest — net principal = EMI − interest.'>
                   EMI posting order
                 </FieldLabel>
                 <Select onValueChange={field.onChange} value={field.value ?? resolvedPosting}>
                   <FormControl>
-                    <SelectTrigger className='w-full'>
-                      <SelectValue placeholder='Select order' />
+                    <SelectTrigger className='w-full min-w-0 overflow-hidden'>
+                      <SelectValue placeholder='Select order' className='truncate' />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent position='popper'>
