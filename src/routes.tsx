@@ -1,7 +1,8 @@
 import { lazy, type JSX } from 'react';
 
-import { Route } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
+import { Layout } from '@/components/layout/Layout';
 import { PageLoader } from '@/components/ui/page-loader';
 
 const LoansPage = lazy(async () => {
@@ -30,11 +31,13 @@ export function RouteFallback(): JSX.Element {
 
 export function AppRoutes(): JSX.Element {
   return (
-    <>
-      <Route index element={<LoansPage />} />
-      <Route path='loans/create' element={<CreateLoanPage />} />
-      <Route path='loans/:id' element={<LoanDetailsPage />} />
-      <Route path='loans/:id/edit' element={<EditLoanPage />} />
-    </>
+    <Routes>
+      <Route path='/' element={<Layout />}>
+        <Route index element={<LoansPage />} />
+        <Route path='loans/create' element={<CreateLoanPage />} />
+        <Route path='loans/:id' element={<LoanDetailsPage />} />
+        <Route path='loans/:id/edit' element={<EditLoanPage />} />
+      </Route>
+    </Routes>
   );
 }
