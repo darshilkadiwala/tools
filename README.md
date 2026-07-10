@@ -1,73 +1,97 @@
-# React + TypeScript + Vite
+# EMI Calculator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A local-first loan and EMI schedule manager built with React, TypeScript, and Vite. Track home, car, education, and personal loans with support for moratorium periods, tranche disbursements, prepayments, step-ups, and interest rate changes.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Create and manage multiple loans with detailed configuration
+- Generate EMI schedules with moratorium, adjustment, and disbursement rows
+- Apply prepayments, step-ups, and interest rate modifications
+- Export schedules to CSV
+- Dark/light themes with customizable color palettes
+- All data stored locally in the browser via IndexedDB (Dexie)
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+- **React 19** + **TypeScript**
+- **Vite** (rolldown-vite)
+- **React Router** for navigation
+- **Dexie** for IndexedDB persistence
+- **shadcn/ui** + **Tailwind CSS 4** for UI
+- **React Hook Form** + **Zod** for forms
+- **Vitest** for testing
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- [Node.js](https://nodejs.org/) (LTS recommended)
+- [pnpm](https://pnpm.io/)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Install
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactDom from 'eslint-plugin-react-dom';
-import reactX from 'eslint-plugin-react-x';
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+pnpm dev
 ```
+
+### Build
+
+```bash
+pnpm build
+```
+
+### Preview production build
+
+```bash
+pnpm preview
+```
+
+### Lint
+
+```bash
+pnpm lint
+```
+
+### Test
+
+```bash
+pnpm test
+```
+
+Watch mode:
+
+```bash
+pnpm test:watch
+```
+
+## Project Structure
+
+```
+src/
+├── pages/           # Route-level screens
+├── components/
+│   ├── loan/        # Loan domain UI
+│   ├── emi/         # EMI schedule UI
+│   ├── payment/     # Prepayment and step-up dialogs
+│   ├── ui/          # shadcn primitives
+│   └── layout/      # App shell (sidebar, layout)
+├── hooks/           # Reusable stateful logic
+├── contexts/        # React context providers
+├── lib/             # Business logic, persistence, utilities
+├── types/           # Shared domain types
+└── config/          # App configuration
+```
+
+## Data Storage
+
+Loan data, EMI schedules, and modifications are persisted in the browser using IndexedDB via Dexie. No server or account is required — data stays on your device.
+
+## License
+
+Private project.
