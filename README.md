@@ -25,7 +25,7 @@ A local-first loan and EMI schedule manager built with React, TypeScript, and Vi
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 20.19+ or 22.12+ (see `.nvmrc`)
 - [pnpm](https://pnpm.io/)
 
 ### Install
