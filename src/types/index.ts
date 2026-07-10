@@ -10,6 +10,27 @@ export type AdjustmentType = 'proportional' | 'interest_only' | 'none' | 'custom
 /** How to round broken-period interest amounts to whole rupees */
 export type InterestRoundingMode = 'round' | 'floor' | 'ceil';
 
+/** Whether EMI is derived from the standard formula or set to a bank-stated fixed amount */
+export type EmiCalculationMode = 'formula' | 'fixed';
+
+/** How monthly interest is calculated during moratorium and repayment */
+export type InterestAccrualMethod = 'monthly_reducing' | 'actual_365';
+
+/** How the bank applies EMI vs interest within each repayment cycle */
+export type EmiPostingOrder = 'standard' | 'emi_first';
+
+export interface LoanDisbursement {
+  date: string;
+  amount: number;
+  label?: string;
+}
+
+/** Interest rate change during the study/moratorium period (before regular EMIs begin) */
+export interface MoratoriumRateChange {
+  date: string;
+  newInterestRate: number;
+}
+
 export interface Loan {
   id: string;
   name: string;
@@ -26,7 +47,19 @@ export interface Loan {
   insuranceAmount?: number;
   /** How each sub-loan's broken-period interest is rounded to whole rupees (default: round) */
   interestRounding?: InterestRoundingMode;
-  emiAmount: number; // Calculated total EMI (home + insurance when applicable)
+  /** How the monthly EMI is determined (default: formula) */
+  emiCalculationMode?: EmiCalculationMode;
+  /** Original amount disbursed (before moratorium interest capitalization). Used to simulate study-period accrual. */
+  disbursedPrincipal?: number;
+  /** Tranche disbursements during study period (optional detail for education loans) */
+  disbursements?: LoanDisbursement[];
+  /** Interest rate changes during the moratorium period (before first EMI) */
+  moratoriumRateChanges?: MoratoriumRateChange[];
+  /** Interest calculation method (default: actual_365 for education loans with moratorium) */
+  interestAccrualMethod?: InterestAccrualMethod;
+  /** Whether EMI is credited before month-end interest is charged (SBI-style ledger) */
+  emiPostingOrder?: EmiPostingOrder;
+  emiAmount: number; // Total monthly EMI (formula-derived or user-fixed)
   createdAt: string; // ISO UTC string
   updatedAt: string; // ISO UTC string
 }
@@ -43,6 +76,12 @@ export interface EMIScheduleEntry {
   status: EMIStatus;
   modifiedInterestRate?: number; // If rate changed for this EMI
   isAdjustment?: boolean; // True if this is an adjustment payment (partial first month)
+  /** True for interest-only study/moratorium period entries before regular EMIs begin */
+  isMoratorium?: boolean;
+  /** True for tranche disbursement credit rows during moratorium */
+  isDisbursement?: boolean;
+  /** Label for disbursement tranche (e.g. university name) */
+  disbursementLabel?: string;
   /** Per-component breakdown for split loans (e.g. home + insurance) on adjustment rows */
   adjustmentComponents?: Array<{ label: string; interest: number; principal: number }>;
 }
