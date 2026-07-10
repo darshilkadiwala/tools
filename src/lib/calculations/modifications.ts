@@ -2,11 +2,7 @@ import { isoToDate } from '@/lib/utils';
 
 import type { EMIScheduleEntry, Loan } from '@/types';
 
-import {
-  calculateRepaymentComponents,
-  resolveEmiPostingOrder,
-  resolveInterestAccrualMethod,
-} from './moratorium';
+import { calculateRepaymentComponents, resolveEmiPostingOrder, resolveInterestAccrualMethod } from './moratorium';
 
 /**
  * Recalculate EMI schedule after prepayment
