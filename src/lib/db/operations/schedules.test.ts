@@ -23,6 +23,7 @@ function createEntry(
   return {
     id: `${loanId}-emi-${emiNumber}`,
     loanId,
+    entryKind: 'emi',
     emiNumber,
     dueDate,
     principal: 1000,
@@ -38,7 +39,7 @@ describe('schedule operations', () => {
     await db.emiSchedules.clear();
   });
 
-  it('returns schedule entries sorted by EMI number', async () => {
+  it('returns schedule entries sorted by due date', async () => {
     await bulkUpdateEMISchedules([
       createEntry(2, '2025-02-01T00:00:00.000Z'),
       createEntry(1, '2025-01-01T00:00:00.000Z'),
@@ -81,8 +82,6 @@ describe('schedule operations', () => {
     const updated = await getScheduleByLoanId(loanId);
     expect(updated.find((entry) => entry.emiNumber === 1)?.dueDate).toBe('2025-01-01T00:00:00.000Z');
     expect(updated.find((entry) => entry.emiNumber === 2)?.dueDate).toBe(dateToISO(newStartDate));
-    expect(updated.find((entry) => entry.emiNumber === 3)?.dueDate).toBe(
-      dateToISO(addMonths(newStartDate, 1)),
-    );
+    expect(updated.find((entry) => entry.emiNumber === 3)?.dueDate).toBe(dateToISO(addMonths(newStartDate, 1)));
   });
 });

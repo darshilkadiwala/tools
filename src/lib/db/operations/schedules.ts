@@ -2,12 +2,14 @@ import { addMonths, parse } from 'date-fns';
 
 import { getEMIStatus } from '@/lib/calculations';
 import { db } from '@/lib/db/database';
+import { isRegularEmiEntry, normalizeAndSortSchedule, normalizeScheduleEntry } from '@/lib/schedule-entry';
 import { dateToISO } from '@/lib/utils';
 
 import type { EMIScheduleEntry } from '@/types';
 
 export async function getScheduleByLoanId(loanId: string): Promise<EMIScheduleEntry[]> {
-  return db.emiSchedules.where('loanId').equals(loanId).sortBy('emiNumber');
+  const entries = await db.emiSchedules.where('loanId').equals(loanId).toArray();
+  return normalizeAndSortSchedule(entries);
 }
 
 export async function bulkUpdateEMISchedules(entries: EMIScheduleEntry[]): Promise<void> {
@@ -15,8 +17,10 @@ export async function bulkUpdateEMISchedules(entries: EMIScheduleEntry[]): Promi
     return;
   }
 
+  const normalized = entries.map(normalizeScheduleEntry);
+
   await db.transaction('rw', db.emiSchedules, async () => {
-    await db.emiSchedules.bulkPut(entries);
+    await db.emiSchedules.bulkPut(normalized);
   });
 }
 
@@ -71,14 +75,14 @@ export async function updateEMIDateRange(
   newStartDateString: string,
 ): Promise<void> {
   const allEMIs = await getScheduleByLoanId(loanId);
-  const startEMI = allEMIs.find((emi) => emi.emiNumber === startEMINumber);
+  const startEMI = allEMIs.find((emi) => isRegularEmiEntry(emi) && emi.emiNumber === startEMINumber);
   if (!startEMI) {
     throw new Error(`EMI number ${startEMINumber} not found`);
   }
 
   const newStartDate = parse(newStartDateString, 'yyyy-MM-dd', new Date());
   const updatedEMIs = allEMIs
-    .filter((emi) => emi.emiNumber >= startEMINumber && emi.emiNumber <= endEMINumber)
+    .filter((emi) => isRegularEmiEntry(emi) && emi.emiNumber >= startEMINumber && emi.emiNumber <= endEMINumber)
     .map((emi) => ({
       ...emi,
       dueDate: dateToISO(addMonths(newStartDate, emi.emiNumber - startEMINumber)),
