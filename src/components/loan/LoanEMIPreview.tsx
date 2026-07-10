@@ -4,14 +4,23 @@ import { Calculator, IndianRupee, Percent, Shield, Timer } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { calculateEMI, formatCurrency, getLoanComponents } from '@/lib/calculations';
+import {
+  calculateEMI,
+  calculateTenureFromFixedEMI,
+  formatCurrency,
+  getLoanComponents,
+} from '@/lib/calculations';
 import { cn } from '@/lib/utils';
+
+import type { EmiCalculationMode } from '@/types';
 
 interface LoanEMIPreviewProps {
   principal: number;
   insuranceAmount: number;
   interestRate: number;
   tenureMonths: number;
+  emiCalculationMode?: EmiCalculationMode;
+  fixedEmiAmount?: number;
   className?: string;
 }
 
@@ -29,9 +38,12 @@ export function LoanEMIPreview({
   insuranceAmount,
   interestRate,
   tenureMonths,
+  emiCalculationMode = 'formula',
+  fixedEmiAmount = 0,
   className,
 }: LoanEMIPreviewProps): JSX.Element {
   const isReady = principal > 0 && tenureMonths > 0 && interestRate >= 0;
+  const isFixedEmi = emiCalculationMode === 'fixed' && fixedEmiAmount > 0;
 
   const emiBreakdown = useMemo(() => {
     if (!isReady) return null;
@@ -43,13 +55,26 @@ export function LoanEMIPreview({
     });
   }, [isReady, principal, insuranceAmount, interestRate, tenureMonths]);
 
-  const totalEmi = useMemo(() => {
+  const formulaEmi = useMemo(() => {
     if (!isReady) return 0;
     if (emiBreakdown && emiBreakdown.length > 1) {
       return Math.round(emiBreakdown.reduce((sum, component) => sum + component.emiAmount, 0));
     }
     return Math.round(calculateEMI(principal, interestRate, tenureMonths));
   }, [isReady, emiBreakdown, principal, interestRate, tenureMonths]);
+
+  const displayEmi = isFixedEmi ? fixedEmiAmount : formulaEmi;
+
+  const actualTenure = useMemo(() => {
+    if (!isReady || !isFixedEmi) return null;
+    return calculateTenureFromFixedEMI(
+      principal,
+      insuranceAmount > 0 ? insuranceAmount : undefined,
+      interestRate,
+      fixedEmiAmount,
+      tenureMonths + 120,
+    );
+  }, [isReady, isFixedEmi, principal, insuranceAmount, interestRate, fixedEmiAmount, tenureMonths]);
 
   return (
     <Card className={cn('shadow-sm', className)}>
@@ -67,11 +92,23 @@ export function LoanEMIPreview({
       <CardContent className='space-y-4'>
         <div className='bg-muted/50 rounded-lg border p-4 text-center'>
           <p className='text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase'>
-            Estimated monthly EMI
+            {isFixedEmi ? 'Fixed monthly EMI' : 'Estimated monthly EMI'}
           </p>
           <p className={cn('text-3xl font-bold tracking-tight', !isReady && 'text-muted-foreground')}>
-            {isReady ? formatCurrency(totalEmi) : '—'}
+            {isReady ? formatCurrency(displayEmi) : '—'}
           </p>
+          {isFixedEmi && isReady && (
+            <p className='text-muted-foreground mt-2 text-xs'>
+              Formula EMI would be {formatCurrency(formulaEmi)}
+              {formulaEmi !== displayEmi && (
+                <span>
+                  {' '}
+                  ({displayEmi > formulaEmi ? '+' : ''}
+                  {formatCurrency(displayEmi - formulaEmi)})
+                </span>
+              )}
+            </p>
+          )}
           {!isReady && (
             <p className='text-muted-foreground mt-2 text-xs'>Enter amount, rate, and tenure to calculate</p>
           )}
@@ -104,13 +141,19 @@ export function LoanEMIPreview({
           <div className='flex items-center justify-between text-sm'>
             <span className='text-muted-foreground flex items-center gap-2'>
               <Timer className='size-3.5' />
-              Tenure
+              {isFixedEmi && actualTenure !== null && actualTenure < tenureMonths ? 'Actual tenure' : 'Tenure'}
             </span>
-            <span className='font-medium'>{tenureMonths > 0 ? formatTenure(tenureMonths) : '—'}</span>
+            <span className='font-medium'>
+              {tenureMonths > 0
+                ? isFixedEmi && actualTenure !== null && actualTenure < tenureMonths
+                  ? `${formatTenure(actualTenure)} (max ${formatTenure(tenureMonths)})`
+                  : formatTenure(tenureMonths)
+                : '—'}
+            </span>
           </div>
         </div>
 
-        {emiBreakdown && emiBreakdown.length > 1 && (
+        {emiBreakdown && emiBreakdown.length > 1 && !isFixedEmi && (
           <>
             <Separator />
             <div className='space-y-2'>

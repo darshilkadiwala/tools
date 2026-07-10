@@ -5,8 +5,10 @@ import { Briefcase, Car, GraduationCap, Home, MoreHorizontal, Settings2, Tag, Wa
 import { useForm, useWatch } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { needsAdjustmentPayment } from '@/lib/calculations';
@@ -20,10 +22,13 @@ import { FieldLabel } from './FieldLabel';
 import { FormSection } from './FormSection';
 import { loanFormSchema, type LoanFormValues } from './loan-form-schema';
 import { LoanEMIPreview } from './LoanEMIPreview';
+import { MoratoriumOptions } from './MoratoriumOptions';
 
 interface LoanFormProps {
   loan?: Loan;
-  onSubmit: (data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => Promise<void>;
+  onSubmit: (
+    data: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'> & { fixedEmiAmount?: number },
+  ) => Promise<void>;
   onCancel?: () => void;
 }
 
@@ -52,6 +57,20 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
           interestRounding: loan.interestRounding ?? 'round',
           customAdjustmentPrincipal: loan.customAdjustmentPrincipal ?? 0,
           customAdjustmentInterest: loan.customAdjustmentInterest ?? 0,
+          emiCalculationMode: loan.emiCalculationMode ?? 'formula',
+          fixedEmiAmount: loan.emiCalculationMode === 'fixed' ? loan.emiAmount : 0,
+          disbursedPrincipal: loan.disbursedPrincipal ?? 0,
+          disbursements: (loan.disbursements ?? []).map((disb) => ({
+            date: dateToISODateString(isoToDate(disb.date)),
+            amount: disb.amount,
+            label: disb.label ?? '',
+          })),
+          moratoriumRateChanges: (loan.moratoriumRateChanges ?? []).map((change) => ({
+            date: dateToISODateString(isoToDate(change.date)),
+            newInterestRate: change.newInterestRate,
+          })),
+          interestAccrualMethod: loan.interestAccrualMethod,
+          emiPostingOrder: loan.emiPostingOrder,
         }
       : {
           name: '',
@@ -66,28 +85,54 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
           interestRounding: 'round' as const,
           customAdjustmentPrincipal: 0,
           customAdjustmentInterest: 0,
+          emiCalculationMode: 'formula' as const,
+          fixedEmiAmount: 0,
+          disbursedPrincipal: 0,
+          disbursements: [],
+          moratoriumRateChanges: [],
         },
   });
 
-  const [loanStartDate, loanType, principal, insuranceAmount, interestRate, tenureMonths] = useWatch({
-    control: form.control,
-    name: ['startDate', 'type', 'principal', 'insuranceAmount', 'interestRate', 'tenureMonths'],
-  });
+  const [loanStartDate, loanType, principal, insuranceAmount, interestRate, tenureMonths, emiCalculationMode, fixedEmiAmount] =
+    useWatch({
+      control: form.control,
+      name: [
+        'startDate',
+        'type',
+        'principal',
+        'insuranceAmount',
+        'interestRate',
+        'tenureMonths',
+        'emiCalculationMode',
+        'fixedEmiAmount',
+      ],
+    });
 
   const principalLabel = useMemo(() => {
     const labels: Record<LoanType, string> = {
       home: 'Home loan amount',
       car: 'Car loan amount',
-      education: 'Education loan amount',
+      education: 'Outstanding at first EMI (₹)',
       personal: 'Personal loan amount',
       other: 'Principal amount',
     };
     return labels[loanType ?? 'home'];
   }, [loanType]);
 
+  const principalHelp = useMemo(() => {
+    if (loanType === 'education') {
+      return 'Enter the outstanding balance at your first EMI date (after moratorium interest capitalization), not the original disbursed amount.';
+    }
+    return undefined;
+  }, [loanType]);
+
   const handleSubmit = async (data: LoanFormValues): Promise<void> => {
     const needsAdjustment = needsAdjustmentPayment(data.startDate, data.emiStartDate);
     const hasInsurance = (data.insuranceAmount ?? 0) > 0;
+
+    const trancheTotal = (data.disbursements ?? []).reduce((sum, row) => sum + row.amount, 0);
+    const validDisbursements = (data.disbursements ?? []).filter((row) => row.amount > 0 && row.date);
+    const validRateChanges = (data.moratoriumRateChanges ?? []).filter((row) => row.date && row.newInterestRate >= 0);
 
     await onSubmit({
       name: data.name,
@@ -97,6 +142,30 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
       interestRate: data.interestRate,
       tenureMonths: data.tenureMonths,
       interestRounding: data.interestRounding ?? 'round',
+      emiCalculationMode: data.emiCalculationMode ?? 'formula',
+      ...(data.emiCalculationMode === 'fixed' ? { fixedEmiAmount: data.fixedEmiAmount } : {}),
+      ...(trancheTotal === 0 && data.disbursedPrincipal && data.disbursedPrincipal > 0
+        ? { disbursedPrincipal: data.disbursedPrincipal }
+        : {}),
+      ...(validDisbursements.length > 0
+        ? {
+            disbursements: validDisbursements.map((disb) => ({
+              date: dateToISO(isoDateStringToDate(disb.date)),
+              amount: disb.amount,
+              ...(disb.label ? { label: disb.label } : {}),
+            })),
+          }
+        : {}),
+      ...(validRateChanges.length > 0
+        ? {
+            moratoriumRateChanges: validRateChanges.map((change) => ({
+              date: dateToISO(isoDateStringToDate(change.date)),
+              newInterestRate: change.newInterestRate,
+            })),
+          }
+        : {}),
+      ...(data.interestAccrualMethod ? { interestAccrualMethod: data.interestAccrualMethod } : {}),
+      ...(data.emiPostingOrder ? { emiPostingOrder: data.emiPostingOrder } : {}),
       startDate: dateToISO(isoDateStringToDate(data.startDate)),
       emiStartDate: dateToISO(isoDateStringToDate(data.emiStartDate)),
       ...(needsAdjustment
@@ -126,6 +195,8 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
           insuranceAmount={insuranceAmount ?? 0}
           interestRate={interestRate ?? 0}
           tenureMonths={tenureMonths ?? 0}
+          emiCalculationMode={emiCalculationMode ?? 'formula'}
+          fixedEmiAmount={fixedEmiAmount ?? 0}
         />
         <div className='grid grid-cols-[minmax(1fr,auto)] gap-4'>
           <div className='grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-3'>
@@ -193,7 +264,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                   name='principal'
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel>{principalLabel}</FieldLabel>
+                      <FieldLabel help={principalHelp}>{principalLabel}</FieldLabel>
                       <FormControl>
                         <LocaleNumberInput
                           placeholder={
@@ -261,7 +332,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                   name='tenureMonths'
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel help='Total number of monthly installments in your loan agreement. 240 months = 20 years.'>
+                      <FieldLabel help='Total number of monthly installments in your loan agreement. 240 months = 20 years. With a fixed EMI, actual tenure may be shorter if the loan is repaid early.'>
                         Tenure (months)
                       </FieldLabel>
                       <FormControl>
@@ -278,6 +349,62 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                     </FormItem>
                   )}
                 />
+
+                <div className='space-y-4 sm:col-span-2'>
+                  <FormField
+                    control={form.control}
+                    name='emiCalculationMode'
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className='bg-muted/30 flex items-start gap-3 rounded-lg border p-4'>
+                          <Checkbox
+                            id='fixed-emi'
+                            checked={field.value === 'fixed'}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked === true ? 'fixed' : 'formula');
+                            }}
+                          />
+                          <div className='space-y-1'>
+                            <Label htmlFor='fixed-emi' className='text-sm font-medium'>
+                              Use bank-stated fixed EMI
+                            </Label>
+                            <p className='text-muted-foreground text-xs leading-relaxed'>
+                              Enable when your bank charges a fixed monthly amount (e.g. ₹9,500) instead of the
+                              formula-calculated EMI. Interest is computed on the reducing balance each month; the
+                              remainder goes to principal.
+                            </p>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {emiCalculationMode === 'fixed' && (
+                    <FormField
+                      control={form.control}
+                      name='fixedEmiAmount'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FieldLabel help='The exact monthly installment amount you pay, as stated by your bank.'>
+                            Fixed EMI amount (₹)
+                          </FieldLabel>
+                          <FormControl>
+                            <LocaleNumberInput
+                              placeholder='9,500'
+                              value={field.value ?? 0}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
 
                 {/* <div className='bg-muted/30 space-y-4 rounded-lg border p-4 sm:col-span-2'>
                   <div className='flex items-start gap-3'>
@@ -385,6 +512,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
             </FormSection>
 
             <AdjustmentOptions control={form.control} className='col-span-full' />
+            <MoratoriumOptions control={form.control} className='col-span-full' />
           </div>
 
           <aside className='hidden lg:block'>
@@ -394,6 +522,8 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                 insuranceAmount={insuranceAmount ?? 0}
                 interestRate={interestRate ?? 0}
                 tenureMonths={tenureMonths ?? 0}
+                emiCalculationMode={emiCalculationMode ?? 'formula'}
+                fixedEmiAmount={fixedEmiAmount ?? 0}
               />
             </div>
           </aside>

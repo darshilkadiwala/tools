@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { calculateTotalLoanEMI } from '@/lib/calculations';
+import { calculateTotalLoanEMI, resolveLoanEmiAmount } from '@/lib/calculations';
 import { db } from '@/lib/db';
 import { deleteLoanData } from '@/lib/db-operations';
 import { dateToISO, generateUUID } from '@/lib/utils';
@@ -11,8 +11,10 @@ export function useLoans(): {
   loans: Loan[];
   loading: boolean;
   error: Error | null;
-  createLoan: (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>) => Promise<Loan>;
-  updateLoan: (id: string, updates: Partial<Loan>) => Promise<Loan>;
+  createLoan: (
+    loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'> & { fixedEmiAmount?: number },
+  ) => Promise<Loan>;
+  updateLoan: (id: string, updates: Partial<Loan> & { fixedEmiAmount?: number }) => Promise<Loan>;
   deleteLoan: (id: string) => Promise<void>;
   getLoan: (id: string) => Promise<Loan | undefined>;
   refreshLoans: () => Promise<void>;
@@ -39,15 +41,13 @@ export function useLoans(): {
   }, [loadLoans]);
 
   const createLoan = useCallback(
-    async (loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'>): Promise<Loan> => {
-      const emiAmount = calculateTotalLoanEMI(
-        loanData.principal,
-        loanData.insuranceAmount,
-        loanData.interestRate,
-        loanData.tenureMonths,
-      );
+    async (
+      loanData: Omit<Loan, 'id' | 'createdAt' | 'updatedAt' | 'emiAmount'> & { fixedEmiAmount?: number },
+    ): Promise<Loan> => {
+      const { fixedEmiAmount, ...rest } = loanData;
+      const emiAmount = resolveLoanEmiAmount(rest, fixedEmiAmount);
       const newLoan: Loan = {
-        ...loanData,
+        ...rest,
         id: generateUUID(),
         emiAmount,
         createdAt: dateToISO(new Date()),
@@ -61,36 +61,53 @@ export function useLoans(): {
     [],
   );
 
-  const updateLoan = useCallback(async (id: string, updates: Partial<Loan>): Promise<Loan> => {
-    const existingLoan = await db.loans.get(id);
-    if (!existingLoan) {
-      throw new Error('Loan not found');
-    }
+  const updateLoan = useCallback(
+    async (id: string, updates: Partial<Loan> & { fixedEmiAmount?: number }): Promise<Loan> => {
+      const { fixedEmiAmount, ...loanUpdates } = updates;
+      const existingLoan = await db.loans.get(id);
+      if (!existingLoan) {
+        throw new Error('Loan not found');
+      }
 
-    const updatedLoan: Loan = {
-      ...existingLoan,
-      ...updates,
-      updatedAt: dateToISO(new Date()),
-    };
+      const updatedLoan: Loan = {
+        ...existingLoan,
+        ...loanUpdates,
+        updatedAt: dateToISO(new Date()),
+      };
 
-    if (
-      updates.principal !== undefined ||
-      updates.insuranceAmount !== undefined ||
-      updates.interestRate !== undefined ||
-      updates.tenureMonths !== undefined
-    ) {
-      updatedLoan.emiAmount = calculateTotalLoanEMI(
-        updatedLoan.principal,
-        updatedLoan.insuranceAmount,
-        updatedLoan.interestRate,
-        updatedLoan.tenureMonths,
-      );
-    }
+      if (updatedLoan.emiCalculationMode === 'fixed') {
+        if (fixedEmiAmount !== undefined && fixedEmiAmount > 0) {
+          updatedLoan.emiAmount = fixedEmiAmount;
+        }
+      } else if (loanUpdates.emiCalculationMode === 'formula') {
+        updatedLoan.emiAmount = calculateTotalLoanEMI(
+          updatedLoan.principal,
+          updatedLoan.insuranceAmount,
+          updatedLoan.interestRate,
+          updatedLoan.tenureMonths,
+        );
+      } else if (
+        existingLoan.emiCalculationMode !== 'fixed' &&
+        loanUpdates.emiCalculationMode !== 'fixed' &&
+        (loanUpdates.principal !== undefined ||
+          loanUpdates.insuranceAmount !== undefined ||
+          loanUpdates.interestRate !== undefined ||
+          loanUpdates.tenureMonths !== undefined)
+      ) {
+        updatedLoan.emiAmount = calculateTotalLoanEMI(
+          updatedLoan.principal,
+          updatedLoan.insuranceAmount,
+          updatedLoan.interestRate,
+          updatedLoan.tenureMonths,
+        );
+      }
 
-    await db.loans.update(id, updatedLoan);
-    setLoans((currentLoans) => currentLoans.map((loan) => (loan.id === id ? updatedLoan : loan)));
-    return updatedLoan;
-  }, []);
+      await db.loans.put(updatedLoan);
+      setLoans((currentLoans) => currentLoans.map((loan) => (loan.id === id ? updatedLoan : loan)));
+      return updatedLoan;
+    },
+    [],
+  );
 
   const deleteLoan = useCallback(async (id: string): Promise<void> => {
     await deleteLoanData(id);
