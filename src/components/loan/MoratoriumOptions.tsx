@@ -14,9 +14,9 @@ import {
   resolveEmiPostingOrder,
   resolveInterestAccrualMethod,
 } from '@/lib/calculations';
+import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 import { cn, isoDateStringToDate } from '@/lib/utils';
 
-import type { LoanFormValues } from './loan-form-schema';
 import { DisbursementTranches } from './DisbursementTranches';
 import { FieldLabel } from './FieldLabel';
 import { MoratoriumRateChanges } from './MoratoriumRateChanges';
@@ -105,8 +105,8 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
       <CardHeader className='bg-muted/50 border-b'>
         <CardTitle className='text-base'>Study / moratorium period</CardTitle>
         <CardDescription>
-          Disbursement on {format(isoDateStringToDate(startDate!), 'MMM d, yyyy')} and first EMI on{' '}
-          {format(isoDateStringToDate(emiStartDate!), 'MMM d, yyyy')} span{' '}
+          Disbursement on {format(isoDateStringToDate(startDate), 'MMM d, yyyy')} and first EMI on{' '}
+          {format(isoDateStringToDate(emiStartDate), 'MMM d, yyyy')} span{' '}
           <strong>{formatYearsMonths(monthCount)}</strong> of interest-only accrual before regular EMIs begin. During
           this period the bank charges interest monthly and capitalizes it into the outstanding balance.
         </CardDescription>

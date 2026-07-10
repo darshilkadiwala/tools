@@ -7,9 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { calculateAdjustmentPreview, explainInterestVariance, formatCurrency } from '@/lib/calculations';
+import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 import { cn, isoDateStringToDate } from '@/lib/utils';
-
-import type { LoanFormValues } from './loan-form-schema';
 
 interface AdjustmentOptionsProps {
   control: Control<LoanFormValues>;

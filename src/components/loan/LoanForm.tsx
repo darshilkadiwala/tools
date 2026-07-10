@@ -13,6 +13,7 @@ import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { needsAdjustmentPayment } from '@/lib/calculations';
 import { formatLocaleNumber } from '@/lib/locale';
+import { loanFormSchema, type LoanFormValues } from '@/lib/schemas/loan-form-schema';
 import { cn, dateToISO, dateToISODateString, isoDateStringToDate, isoToDate } from '@/lib/utils';
 
 import type { Loan, LoanType } from '@/types';
@@ -20,7 +21,6 @@ import type { Loan, LoanType } from '@/types';
 import { AdjustmentOptions } from './AdjustmentOptions';
 import { FieldLabel } from './FieldLabel';
 import { FormSection } from './FormSection';
-import { loanFormSchema, type LoanFormValues } from './loan-form-schema';
 import { LoanEMIPreview } from './LoanEMIPreview';
 import { MoratoriumOptions } from './MoratoriumOptions';
 
@@ -93,20 +93,28 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
         },
   });
 
-  const [loanStartDate, loanType, principal, insuranceAmount, interestRate, tenureMonths, emiCalculationMode, fixedEmiAmount] =
-    useWatch({
-      control: form.control,
-      name: [
-        'startDate',
-        'type',
-        'principal',
-        'insuranceAmount',
-        'interestRate',
-        'tenureMonths',
-        'emiCalculationMode',
-        'fixedEmiAmount',
-      ],
-    });
+  const [
+    loanStartDate,
+    loanType,
+    principal,
+    insuranceAmount,
+    interestRate,
+    tenureMonths,
+    emiCalculationMode,
+    fixedEmiAmount,
+  ] = useWatch({
+    control: form.control,
+    name: [
+      'startDate',
+      'type',
+      'principal',
+      'insuranceAmount',
+      'interestRate',
+      'tenureMonths',
+      'emiCalculationMode',
+      'fixedEmiAmount',
+    ],
+  });
 
   const principalLabel = useMemo(() => {
     const labels: Record<LoanType, string> = {

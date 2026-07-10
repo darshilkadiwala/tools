@@ -2,7 +2,6 @@ import { useState, type JSX } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,14 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanOperations } from '@/hooks/useLoanOperations';
-
-const interestRateSchema = z.object({
-  newInterestRate: z.number().min(0, 'Interest rate must be non-negative').max(100, 'Interest rate cannot exceed 100%'),
-  applyTo: z.enum(['all', 'selected']),
-  selectedEMIs: z.array(z.number()).optional(),
-});
-
-type InterestRateFormValues = z.infer<typeof interestRateSchema>;
+import { interestRateSchema, type InterestRateFormValues } from '@/lib/schemas/interest-rate-schema';
 
 interface InterestRateModifierProps {
   open: boolean;

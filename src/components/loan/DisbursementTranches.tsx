@@ -8,8 +8,8 @@ import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/f
 import { Input } from '@/components/ui/input';
 import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { formatCurrency } from '@/lib/calculations';
+import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 
-import type { LoanFormValues } from './loan-form-schema';
 import { FieldLabel } from './FieldLabel';
 
 interface DisbursementTranchesProps {
@@ -61,7 +61,9 @@ export function DisbursementTranches({ control, startDate, emiStartDate }: Disbu
       ) : (
         <div className='space-y-3'>
           {fields.map((field, index) => (
-            <div key={field.id} className='bg-muted/30 grid grid-cols-1 gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_1.5fr_auto]'>
+            <div
+              key={field.id}
+              className='bg-muted/30 grid grid-cols-1 gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_1.5fr_auto]'>
               <FormField
                 control={control}
                 name={`disbursements.${index}.date`}
@@ -69,12 +71,7 @@ export function DisbursementTranches({ control, startDate, emiStartDate }: Disbu
                   <FormItem>
                     <FieldLabel>Date</FieldLabel>
                     <FormControl>
-                      <Input
-                        type='date'
-                        min={startDate ?? ''}
-                        max={emiStartDate ?? ''}
-                        {...dateField}
-                      />
+                      <Input type='date' min={startDate ?? ''} max={emiStartDate ?? ''} {...dateField} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -114,7 +111,12 @@ export function DisbursementTranches({ control, startDate, emiStartDate }: Disbu
                 )}
               />
               <div className='flex items-end'>
-                <Button type='button' variant='ghost' size='icon' onClick={() => remove(index)} aria-label='Remove tranche'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => remove(index)}
+                  aria-label='Remove tranche'>
                   <Trash2 className='text-muted-foreground size-4' />
                 </Button>
               </div>

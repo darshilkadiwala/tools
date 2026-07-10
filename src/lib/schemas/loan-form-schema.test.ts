@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loanFormSchema } from '@/components/loan/loan-form-schema';
+import { loanFormSchema } from '@/lib/schemas/loan-form-schema';
 
 const validBase = {
   name: 'Test Loan',

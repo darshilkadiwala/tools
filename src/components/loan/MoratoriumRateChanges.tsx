@@ -6,8 +6,8 @@ import { useFieldArray, type Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 
-import type { LoanFormValues } from './loan-form-schema';
 import { FieldLabel } from './FieldLabel';
 
 interface MoratoriumRateChangesProps {
@@ -58,7 +58,9 @@ export function MoratoriumRateChanges({
       ) : (
         <div className='space-y-3'>
           {fields.map((field, index) => (
-            <div key={field.id} className='bg-muted/30 grid grid-cols-1 gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]'>
+            <div
+              key={field.id}
+              className='bg-muted/30 grid grid-cols-1 gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]'>
               <FormField
                 control={control}
                 name={`moratoriumRateChanges.${index}.date`}
@@ -66,12 +68,7 @@ export function MoratoriumRateChanges({
                   <FormItem>
                     <FieldLabel>Effective date</FieldLabel>
                     <FormControl>
-                      <Input
-                        type='date'
-                        min={startDate ?? ''}
-                        max={emiStartDate ?? ''}
-                        {...dateField}
-                      />
+                      <Input type='date' min={startDate ?? ''} max={emiStartDate ?? ''} {...dateField} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -100,7 +97,12 @@ export function MoratoriumRateChanges({
                 )}
               />
               <div className='flex items-end'>
-                <Button type='button' variant='ghost' size='icon' onClick={() => remove(index)} aria-label='Remove rate change'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => remove(index)}
+                  aria-label='Remove rate change'>
                   <Trash2 className='text-muted-foreground size-4' />
                 </Button>
               </div>
