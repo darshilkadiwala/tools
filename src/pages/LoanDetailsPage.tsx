@@ -4,7 +4,7 @@ import { Calendar, PencilIcon, Percent, Trash2, TrendingUp, Wallet } from 'lucid
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { EMISchedule } from '@/components/emi/EMISchedule';
-import { InterestRateModifier } from '@/components/InterestRate/InterestRateModifier';
+import { InterestRateModifier } from '@/components/interest-rate/InterestRateModifier';
 import { DeleteLoanDialog } from '@/components/loan/DeleteLoanDialog';
 import { PrePaymentDialog } from '@/components/payment/PrePaymentDialog';
 import { StepUpDialog } from '@/components/payment/StepUpDialog';
