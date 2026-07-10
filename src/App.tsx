@@ -8,14 +8,14 @@ import { AppRoutes, RouteFallback } from '@/routes';
 
 export function App(): JSX.Element {
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <LoanProvider>
+    <BrowserRouter>
+      <LoanProvider>
+        <ErrorBoundary>
           <Suspense fallback={<RouteFallback />}>
             <AppRoutes />
           </Suspense>
-        </LoanProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
+        </ErrorBoundary>
+      </LoanProvider>
+    </BrowserRouter>
   );
 }

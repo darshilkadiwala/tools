@@ -33,8 +33,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <p className='text-muted-foreground text-sm'>{this.state.error.message}</p>
             <Button
               onClick={() => {
-                this.setState({ error: null });
-                window.location.assign('/');
+                window.location.replace('/');
               }}>
               Return to loans
             </Button>
