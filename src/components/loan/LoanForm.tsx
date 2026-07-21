@@ -6,10 +6,11 @@ import { useForm, useWatch } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LocaleNumberInput } from '@/components/ui/locale-number-input';
+import { PercentageInput } from '@/components/ui/percentage-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { needsAdjustmentPayment } from '@/lib/calculations';
 import { formatLocaleNumber } from '@/lib/locale';
@@ -274,7 +275,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                     <FormItem>
                       <FieldLabel help={principalHelp}>{principalLabel}</FieldLabel>
                       <FormControl>
-                        <LocaleNumberInput
+                        <CurrencyInput
                           placeholder={
                             loanType === 'home' ? formatLocaleNumber(3_400_000) : formatLocaleNumber(1_000_000)
                           }
@@ -298,7 +299,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                         Insurance premium (₹)
                       </FieldLabel>
                       <FormControl>
-                        <LocaleNumberInput
+                        <CurrencyInput
                           placeholder='1,35,116'
                           value={field.value ?? 0}
                           onChange={field.onChange}
@@ -319,15 +320,13 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                     <FormItem>
                       <FieldLabel>Annual interest rate (%)</FieldLabel>
                       <FormControl>
-                        <Input
-                          type='number'
-                          step='0.01'
-                          min='0'
-                          max='100'
+                        <PercentageInput
                           placeholder='8.5'
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                         />
                       </FormControl>
                       <FormMessage />
@@ -398,7 +397,7 @@ export function LoanForm({ loan, onSubmit, onCancel }: LoanFormProps): JSX.Eleme
                             Fixed EMI amount (₹)
                           </FieldLabel>
                           <FormControl>
-                            <LocaleNumberInput
+                            <CurrencyInput
                               placeholder='9,500'
                               value={field.value ?? 0}
                               onChange={field.onChange}

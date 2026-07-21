@@ -1,4 +1,4 @@
-import { forwardRef, type ComponentProps, type FocusEvent, type JSX } from 'react';
+import { forwardRef, type ComponentProps, type FocusEvent, type JSX, type KeyboardEvent } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -32,8 +32,21 @@ function collapseSelectionOnFocus(input: HTMLInputElement): void {
   setTimeout(() => placeCaretAtEnd(input), 0);
 }
 
+function insertTextAtSelection(input: HTMLInputElement, text: string): void {
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  const newValue = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.bind(input);
+  valueSetter?.call(input, newValue);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+
+  const caret = start + text.length;
+  input.setSelectionRange(caret, caret);
+}
+
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, type, selectOnFocus = false, onFocus, inputMode, step, ...props },
+  { className, type, selectOnFocus = false, onFocus, onKeyDown, inputMode, step, ...props },
   ref,
 ): JSX.Element {
   const useTextForNumber = type === 'number' && !selectOnFocus;
@@ -46,6 +59,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     }
 
     onFocus?.(event);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (
+      resolvedInputMode === 'decimal' &&
+      (event.code === 'NumpadDecimal' || event.key === 'Decimal') &&
+      event.key !== '.'
+    ) {
+      event.preventDefault();
+      insertTextAtSelection(event.currentTarget, '.');
+    }
+
+    onKeyDown?.(event);
   };
 
   return (
@@ -62,6 +88,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         className,
       )}
       onFocus={handleFocus}
+      onKeyDown={handleKeyDown}
       {...props}
     />
   );

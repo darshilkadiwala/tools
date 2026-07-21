@@ -4,8 +4,8 @@ import { format } from 'date-fns';
 import { useWatch, type Control } from 'react-hook-form';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   formatCurrency,
@@ -124,7 +124,7 @@ export function MoratoriumOptions({ control, className }: MoratoriumOptionsProps
                   Total disbursed amount (₹)
                 </FieldLabel>
                 <FormControl>
-                  <LocaleNumberInput
+                  <CurrencyInput
                     placeholder='4,18,000'
                     value={field.value ?? 0}
                     onChange={field.onChange}

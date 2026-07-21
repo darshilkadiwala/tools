@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { InlineError } from '@/components/ui/inline-error';
-import { Input } from '@/components/ui/input';
+import { PercentageInput } from '@/components/ui/percentage-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEMISchedule } from '@/contexts/EMIScheduleContext';
 import { useLoanOperations } from '@/hooks/useLoanOperations';
@@ -97,12 +97,13 @@ export function InterestRateModifier({
                   <FormItem>
                     <FormLabel>New Interest Rate (% p.a.)</FormLabel>
                     <FormControl>
-                      <Input
-                        type='number'
-                        step='0.01'
+                      <PercentageInput
                         placeholder='8.5'
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage>{form.formState.errors.newInterestRate?.message}</FormMessage>

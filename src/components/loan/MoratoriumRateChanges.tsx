@@ -6,6 +6,7 @@ import { useFieldArray, type Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PercentageInput } from '@/components/ui/percentage-input';
 import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 
 import { FieldLabel } from './FieldLabel';
@@ -81,15 +82,13 @@ export function MoratoriumRateChanges({
                   <FormItem>
                     <FieldLabel>New rate (% p.a.)</FieldLabel>
                     <FormControl>
-                      <Input
-                        type='number'
-                        step='0.01'
-                        min='0'
-                        max='100'
+                      <PercentageInput
                         placeholder='9.00'
-                        {...rateField}
-                        value={rateField.value ?? ''}
-                        onChange={(e) => rateField.onChange(parseFloat(e.target.value) || 0)}
+                        value={rateField.value ?? 0}
+                        onChange={rateField.onChange}
+                        onBlur={rateField.onBlur}
+                        name={rateField.name}
+                        ref={rateField.ref}
                       />
                     </FormControl>
                     <FormMessage />

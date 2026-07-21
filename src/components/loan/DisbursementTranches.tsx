@@ -4,9 +4,9 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useWatch, type Control } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { formatCurrency } from '@/lib/calculations';
 import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 
@@ -84,7 +84,7 @@ export function DisbursementTranches({ control, startDate, emiStartDate }: Disbu
                   <FormItem>
                     <FieldLabel>Amount (₹)</FieldLabel>
                     <FormControl>
-                      <LocaleNumberInput
+                      <CurrencyInput
                         placeholder='98,700'
                         value={amountField.value ?? 0}
                         onChange={amountField.onChange}

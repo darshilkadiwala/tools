@@ -81,8 +81,6 @@ describe('schedule operations', () => {
     const updated = await getScheduleByLoanId(loanId);
     expect(updated.find((entry) => entry.emiNumber === 1)?.dueDate).toBe('2025-01-01T00:00:00.000Z');
     expect(updated.find((entry) => entry.emiNumber === 2)?.dueDate).toBe(dateToISO(newStartDate));
-    expect(updated.find((entry) => entry.emiNumber === 3)?.dueDate).toBe(
-      dateToISO(addMonths(newStartDate, 1)),
-    );
+    expect(updated.find((entry) => entry.emiNumber === 3)?.dueDate).toBe(dateToISO(addMonths(newStartDate, 1)));
   });
 });

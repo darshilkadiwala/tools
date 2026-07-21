@@ -4,8 +4,8 @@ import { format } from 'date-fns';
 import { useWatch, type Control } from 'react-hook-form';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { LocaleNumberInput } from '@/components/ui/locale-number-input';
 import { calculateAdjustmentPreview, explainInterestVariance, formatCurrency } from '@/lib/calculations';
 import type { LoanFormValues } from '@/lib/schemas/loan-form-schema';
 import { cn, isoDateStringToDate } from '@/lib/utils';
@@ -237,7 +237,7 @@ export function AdjustmentOptions({ control, className }: AdjustmentOptionsProps
                   <FormItem>
                     <FormLabel>Custom Principal (₹)</FormLabel>
                     <FormControl>
-                      <LocaleNumberInput
+                      <CurrencyInput
                         className='h-11 text-base'
                         placeholder='0'
                         value={field.value ?? 0}
@@ -258,7 +258,7 @@ export function AdjustmentOptions({ control, className }: AdjustmentOptionsProps
                   <FormItem>
                     <FormLabel>Custom Interest (₹)</FormLabel>
                     <FormControl>
-                      <LocaleNumberInput
+                      <CurrencyInput
                         className='h-11 text-base'
                         placeholder='863'
                         value={field.value ?? 0}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatLocaleNumber, getNumberLocale, parseLocaleNumber } from '@/lib/locale';
+import { formatLocaleNumber, getNumberLocale, parseLocaleNumber, sanitizeDecimalInput } from '@/lib/locale';
 
 describe('getNumberLocale', () => {
   it('defaults to Indian grouping for INR amounts', () => {
@@ -36,5 +36,31 @@ describe('parseLocaleNumber', () => {
   it('returns 0 for empty input', () => {
     expect(parseLocaleNumber('')).toBe(0);
     expect(parseLocaleNumber('   ')).toBe(0);
+  });
+
+  it('parses decimal input with a dot', () => {
+    expect(parseLocaleNumber('8.5', { allowDecimals: true })).toBe(8.5);
+    expect(parseLocaleNumber('10.55', { allowDecimals: true })).toBe(10.55);
+  });
+
+  it('parses decimal input with a comma from numpad decimal', () => {
+    expect(parseLocaleNumber('8,5', { allowDecimals: true })).toBe(8.5);
+    expect(parseLocaleNumber('10,55', { allowDecimals: true })).toBe(10.55);
+  });
+});
+
+describe('sanitizeDecimalInput', () => {
+  it('keeps a trailing decimal while typing', () => {
+    expect(sanitizeDecimalInput('8.')).toBe('8.');
+    expect(sanitizeDecimalInput('10.')).toBe('10.');
+  });
+
+  it('normalizes comma to dot and strips invalid characters', () => {
+    expect(sanitizeDecimalInput('8,9')).toBe('8.9');
+    expect(sanitizeDecimalInput('8a.9b')).toBe('8.9');
+  });
+
+  it('allows only one decimal separator', () => {
+    expect(sanitizeDecimalInput('8.9.1')).toBe('8.91');
   });
 });
